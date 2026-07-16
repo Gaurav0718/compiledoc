@@ -18,17 +18,23 @@ export default function FamilyDashboard({ navigate, groupId }) {
   const [catTotals, setCats]    = useState([]);
   const [sheet, setSheet]       = useState(null); // 'collection' | 'expense' | {type,item}
   const [isAdmin, setIsAdmin]   = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
     if (!groupId) return;
-    const d = await getGroupData(groupId);
-    setData(d);
-    const t = getFamilyTally(d.collections, d.expenses);
-    setTally(t);
-    setWarnings(getMismatches(d.collections, d.expenses, t));
-    setCats(getCategoryTotals(d.expenses));
-    const admin = await checkIsAdmin(groupId, user);
-    setIsAdmin(admin);
+    setLoadError(false);
+    try {
+      const d = await getGroupData(groupId);
+      setData(d);
+      const t = getFamilyTally(d.collections, d.expenses);
+      setTally(t);
+      setWarnings(getMismatches(d.collections, d.expenses, t));
+      setCats(getCategoryTotals(d.expenses));
+      const admin = await checkIsAdmin(groupId, user);
+      setIsAdmin(admin);
+    } catch {
+      setLoadError(true);
+    }
   }, [groupId, user]);
 
   useEffect(() => { load(); }, [load]);
@@ -65,6 +71,10 @@ export default function FamilyDashboard({ navigate, groupId }) {
     sounds.delete(); load();
   };
 
+  if (loadError) return <div className="screen"><div style={{ flex:1,display:'flex',flexDirection:'column',gap:12,alignItems:'center',justifyContent:'center',color:'var(--text3)',padding:20,textAlign:'center' }}>
+    <div>Couldn't load this group. Check your connection and try again.</div>
+    <button className="btn btn-secondary" onClick={load}>Retry</button>
+  </div></div>;
   if (!data || !tally) return <div className="screen"><div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)' }}>Loading…</div></div>;
 
   const { group, expenses, collections, members } = data;
@@ -239,7 +249,7 @@ export default function FamilyDashboard({ navigate, groupId }) {
         ))}
 
         {collections.length===0 && expenses.length===0 && (
-          <EmptyState icon="🏠" title="Ready to track!" sub="Add a collection when someone contributes,\nadd an expense when money is spent." />
+          <EmptyState icon="🏠" title="Ready to track!" sub="Add a collection when someone contributes, add an expense when money is spent." />
         )}
       </div>
 

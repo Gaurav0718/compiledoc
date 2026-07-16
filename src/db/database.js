@@ -26,6 +26,14 @@ cache.version(2).stores({
   settlements:    'settlement_id, group_id',
 });
 
+// If another tab has this DB open on an older schema, it blocks our version
+// upgrade — release it so the upgrade can proceed instead of leaving this
+// tab stuck reading/writing a stale schema that's missing new tables.
+cache.on('versionchange', () => cache.close());
+// If we're the tab whose upgrade got blocked by another stale tab, surface
+// it via a reload rather than silently leaving the schema half-upgraded.
+cache.on('blocked', () => { try { window.location.reload(); } catch {} });
+
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const online  = () => navigator.onLine && isConfigured();
 const today   = () => new Date().toISOString().split('T')[0];
@@ -427,7 +435,7 @@ export async function getExpenseSplits(expenseIds) {
     }
   }
   if (!rows.length) {
-    rows = await cache.expense_splits.where('expense_id').anyOf(expenseIds).toArray();
+    rows = await cache.expense_splits.where('expense_id').anyOf(expenseIds).toArray().catch(() => []);
   }
   const map = {};
   for (const r of rows) (map[r.expense_id] ||= []).push({ member_id: r.member_id, share: r.share });
@@ -455,7 +463,7 @@ export async function getExpenses(group_id) {
     );
     if (data) {
       rows = data;
-      await cache.expenses.where('group_id').equals(group_id).delete();
+      await cache.expenses.where('group_id').equals(group_id).delete().catch(() => {});
       for (const e of rows) await cache.expenses.put(e).catch(() => {});
     }
   }
@@ -534,7 +542,7 @@ export async function getCollections(group_id) {
     );
     if (data) {
       rows = data;
-      await cache.collections.where('group_id').equals(group_id).delete();
+      await cache.collections.where('group_id').equals(group_id).delete().catch(() => {});
       for (const c of rows) await cache.collections.put(c).catch(() => {});
     }
   }
@@ -621,12 +629,12 @@ export async function getSettlements(group_id) {
     );
     if (data) {
       rows = data;
-      await cache.settlements.where('group_id').equals(group_id).delete();
+      await cache.settlements.where('group_id').equals(group_id).delete().catch(() => {});
       for (const r of rows) await cache.settlements.put(r).catch(() => {});
     }
   }
   if (!rows.length) {
-    rows = (await cache.settlements.where('group_id').equals(group_id).toArray())
+    rows = (await cache.settlements.where('group_id').equals(group_id).toArray().catch(() => []))
       .filter(s => !s.deleted);
   }
   return rows

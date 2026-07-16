@@ -146,7 +146,18 @@ alter table audit_logs      enable row level security;
 alter table expense_splits  enable row level security;
 alter table settlements     enable row level security;
 
--- Allow full access via anon key (you control access in app logic)
+-- Allow full access via anon key (you control access in app logic).
+-- drop-then-create so this whole script is safe to re-run any time
+-- (Postgres has no "create policy if not exists").
+drop policy if exists "allow_all" on users;
+drop policy if exists "allow_all" on groups;
+drop policy if exists "allow_all" on members;
+drop policy if exists "allow_all" on expenses;
+drop policy if exists "allow_all" on collections;
+drop policy if exists "allow_all" on audit_logs;
+drop policy if exists "allow_all" on expense_splits;
+drop policy if exists "allow_all" on settlements;
+
 create policy "allow_all" on users           for all using (true) with check (true);
 create policy "allow_all" on groups          for all using (true) with check (true);
 create policy "allow_all" on members         for all using (true) with check (true);

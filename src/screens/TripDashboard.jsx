@@ -16,14 +16,20 @@ export default function TripDashboard({ navigate, groupId }) {
   const [balances, setBals] = useState([]);
   const [sheet, setSheet] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
     if (!groupId) return;
-    const d = await getGroupData(groupId);
-    setData(d);
-    setBals(calculateBalances(d.members, d.expenses, d.participantsMap, d.collections, d.group?.mode));
-    const admin = await checkIsAdmin(groupId, user);
-    setIsAdmin(admin);
+    setError(false);
+    try {
+      const d = await getGroupData(groupId);
+      setData(d);
+      setBals(calculateBalances(d.members, d.expenses, d.participantsMap, d.collections, d.group?.mode));
+      const admin = await checkIsAdmin(groupId, user);
+      setIsAdmin(admin);
+    } catch {
+      setError(true);
+    }
   }, [groupId, user]);
 
   useEffect(() => { load(); }, [load]);
@@ -40,6 +46,10 @@ export default function TripDashboard({ navigate, groupId }) {
     sounds.delete(); load();
   };
 
+  if (error) return <div className="screen"><div style={{ flex:1,display:'flex',flexDirection:'column',gap:12,alignItems:'center',justifyContent:'center',color:'var(--text3)',padding:20,textAlign:'center' }}>
+    <div>Couldn't load this group. Check your connection and try again.</div>
+    <button className="btn btn-secondary" onClick={load}>Retry</button>
+  </div></div>;
   if (!data) return <div className="screen"><div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)' }}>Loading…</div></div>;
 
   const { group, expenses, members } = data;

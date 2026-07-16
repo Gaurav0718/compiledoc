@@ -54,16 +54,22 @@ export default function SplitwiseDashboard({ navigate, groupId }) {
   const [settleTxns, setSettleTxns] = useState([]);
   const [sheet, setSheet]     = useState(null); // 'new' | {item} | {settle:{from,to,amount}}
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const load = useCallback(async () => {
     if (!groupId) return;
-    const d = await getGroupData(groupId);
-    setData(d);
-    const bals = calculateSplitwiseBalances(d.members, d.expenses, d.splitsMap, d.settlements);
-    setBals(bals);
-    setSettleTxns(calculateSettlements(bals));
-    const admin = await checkIsAdmin(groupId, user);
-    setIsAdmin(admin);
+    setLoadError(false);
+    try {
+      const d = await getGroupData(groupId);
+      setData(d);
+      const bals = calculateSplitwiseBalances(d.members, d.expenses, d.splitsMap, d.settlements);
+      setBals(bals);
+      setSettleTxns(calculateSettlements(bals));
+      const admin = await checkIsAdmin(groupId, user);
+      setIsAdmin(admin);
+    } catch {
+      setLoadError(true);
+    }
   }, [groupId, user]);
 
   useEffect(() => { load(); }, [load]);
@@ -104,6 +110,10 @@ export default function SplitwiseDashboard({ navigate, groupId }) {
     sounds.success(); load();
   };
 
+  if (loadError) return <div className="screen"><div style={{ flex:1,display:'flex',flexDirection:'column',gap:12,alignItems:'center',justifyContent:'center',color:'var(--text3)',padding:20,textAlign:'center' }}>
+    <div>Couldn't load this group. Check your connection and try again.</div>
+    <button className="btn btn-secondary" onClick={load}>Retry</button>
+  </div></div>;
   if (!data) return <div className="screen"><div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)' }}>Loading…</div></div>;
 
   const { group, expenses, members, settlements } = data;
