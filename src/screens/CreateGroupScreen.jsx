@@ -50,7 +50,7 @@ export default function CreateGroupScreen({ navigate, params }) {
     // ── Step 0: Name
     <div className="content" key="s0">
       <div style={{ padding: '8px 0 4px' }}>
-        <div style={{ fontWeight: 900, fontSize: 24, letterSpacing: '-0.03em', marginBottom: 6 }}>
+        <div style={{ fontWeight: 600, fontSize: 24, letterSpacing: '-0.01em', marginBottom: 6 }}>
           {isFamily ? '🎉 Name your event' : isSplitwise ? '💸 Name your group' : '✈️ Name your trip'}
         </div>
         <div style={{ fontSize: 13, color: 'var(--text2)' }}>
@@ -75,7 +75,7 @@ export default function CreateGroupScreen({ navigate, params }) {
     // ── Step 1 (Family/Splitwise): Members | Step 1 (Trip): Mode
     skipModeStep ? (
       <div className="content" key="s1f">
-        <div style={{ fontWeight: 900, fontSize: 22, letterSpacing: '-0.03em', marginBottom: 4 }}>
+        <div style={{ fontWeight: 600, fontSize: 22, letterSpacing: '-0.01em', marginBottom: 4 }}>
           {isSplitwise ? 'Add Members' : 'Add Participants'}
         </div>
         <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 4 }}>
@@ -104,7 +104,7 @@ export default function CreateGroupScreen({ navigate, params }) {
       </div>
     ) : (
       <div className="content" key="s1t">
-        <div style={{ fontWeight: 900, fontSize: 22, letterSpacing: '-0.03em', marginBottom: 4 }}>Split Mode</div>
+        <div style={{ fontWeight: 600, fontSize: 22, letterSpacing: '-0.01em', marginBottom: 4 }}>Split Mode</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[
             { val:'equal', icon:'⚖️', title:'Equal Split', desc:'Expenses divided equally among participants' },
@@ -125,7 +125,7 @@ export default function CreateGroupScreen({ navigate, params }) {
     // ── Step 2 (Trip only): Members
     !skipModeStep ? (
       <div className="content" key="s2t">
-        <div style={{ fontWeight: 900, fontSize: 22, letterSpacing: '-0.03em', marginBottom: 4 }}>Who's coming?</div>
+        <div style={{ fontWeight: 600, fontSize: 22, letterSpacing: '-0.01em', marginBottom: 4 }}>Who's coming?</div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input className="input" placeholder="Member name" value={newMember}
             onChange={e => { setNewMember(e.target.value); setError(''); }}
