@@ -71,7 +71,7 @@ export default function TripDashboard({ navigate, groupId }) {
             </div>
             <div style={{ textAlign:'right' }}>
               <div className="tally-title">Per Person</div>
-              <div style={{ fontWeight:800, fontSize:22, marginTop:5, letterSpacing:'-0.03em', color:'var(--text)' }}>{fmt(perPerson)}</div>
+              <div style={{ fontWeight:700, fontSize:22, marginTop:5, letterSpacing:'-0.03em', color:'var(--text)' }}>{fmt(perPerson)}</div>
             </div>
           </div>
           <div className="tally-rows">

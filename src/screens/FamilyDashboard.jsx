@@ -104,7 +104,7 @@ export default function FamilyDashboard({ navigate, groupId }) {
             </div>
             <div style={{ textAlign:'right' }}>
               <div className="tally-title">Coverage</div>
-              <div style={{ fontWeight:800, fontSize:24, color: collectPct>=100?'var(--green)':'var(--red)', marginTop:4, letterSpacing:'-0.03em' }}>
+              <div style={{ fontWeight:700, fontSize:24, color: collectPct>=100?'var(--green)':'var(--red)', marginTop:4, letterSpacing:'-0.03em' }}>
                 {Math.round(collectPct)}%
               </div>
             </div>

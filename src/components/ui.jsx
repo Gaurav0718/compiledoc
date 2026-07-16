@@ -1,6 +1,5 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { useTheme } from '../hooks/useTheme';
 
 export function Header({ title, subtitle, onBack, right }) {
   return (
@@ -27,14 +26,10 @@ export function Alert({ type = 'info', icon, children }) {
   );
 }
 
+// One theme only now — nothing to toggle. Kept as a no-op so every screen
+// that still renders <ThemeToggle/> doesn't need to be touched individually.
 export function ThemeToggle() {
-  const { theme, toggle } = useTheme();
-  const isLight = theme === 'light';
-  return (
-    <button className={`theme-toggle ${isLight ? 'on' : ''}`} onClick={toggle} title="Toggle theme">
-      <div className="toggle-thumb" />
-    </button>
-  );
+  return null;
 }
 
 export function PaymentBadge({ mode }) {
@@ -65,4 +60,9 @@ export function fmtDate(d) {
 
 export function initials(name = '') {
   return name.trim().split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+}
+
+// Maps a group's `type` to its dashboard screen name — shared by every screen that navigates to a group.
+export function dashRoute(type) {
+  return type === 'family' ? 'familyDash' : type === 'splitwise' ? 'splitwiseDash' : 'dashboard';
 }

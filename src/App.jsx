@@ -9,6 +9,7 @@ import HomeScreen          from './screens/HomeScreen';
 import CreateGroupScreen   from './screens/CreateGroupScreen';
 import FamilyDashboard     from './screens/FamilyDashboard';
 import TripDashboard       from './screens/TripDashboard';
+import SplitwiseDashboard  from './screens/SplitwiseDashboard';
 import AdminPanelScreen    from './screens/AdminPanelScreen';
 import PublicDashboard     from './screens/PublicDashboard';
 import ProfileScreen       from './screens/ProfileScreen';
@@ -73,6 +74,7 @@ function Router() {
     create:         <CreateGroupScreen navigate={navigate} params={params} />,
     familyDash:     <FamilyDashboard navigate={navigate} groupId={gid} />,
     dashboard:      <TripDashboard navigate={navigate} groupId={gid} />,
+    splitwiseDash:  <SplitwiseDashboard navigate={navigate} groupId={gid} />,
     adminPanel:     <AdminPanelScreen navigate={navigate} groupId={gid} />,
     publicDash:     <PublicDashboard navigate={navigate} groupId={gid} />,
     collectionList: <CollectionListScreen navigate={navigate} groupId={gid} />,

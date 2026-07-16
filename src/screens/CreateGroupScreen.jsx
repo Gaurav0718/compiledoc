@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { createGroup, addMember } from '../db/database';
-import { Header } from '../components/ui';
+import { Header, dashRoute } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { sounds } from '../logic/sounds';
 import { Plus, X } from 'lucide-react';
 
 export default function CreateGroupScreen({ navigate, params }) {
-  const type     = params?.type || 'family';
-  const isFamily = type === 'family';
+  const type        = params?.type || 'family';
+  const isFamily    = type === 'family';
+  const isSplitwise = type === 'splitwise';
+  const skipModeStep = isFamily || isSplitwise; // no equal/audit choice for these two types
   const { user } = useAuth();
 
   const [step, setStep]     = useState(0);
@@ -18,7 +20,7 @@ export default function CreateGroupScreen({ navigate, params }) {
   const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
-  const totalSteps = isFamily ? 2 : 3;
+  const totalSteps = skipModeStep ? 2 : 3;
 
   const addLocal = () => {
     const t = newMember.trim();
@@ -33,10 +35,10 @@ export default function CreateGroupScreen({ navigate, params }) {
   const handleCreate = async () => {
     setLoading(true);
     try {
-      const groupId = await createGroup({ uid: user.uid, name: name.trim(), type, mode: isFamily ? 'family' : mode, creatorName: user.displayName });
+      const groupId = await createGroup({ uid: user.uid, name: name.trim(), type, mode: isFamily ? 'family' : isSplitwise ? 'splitwise' : mode, creatorName: user.displayName });
       for (const m of members) await addMember(groupId, user.uid, m, 'member', user.displayName);
       sounds.success();
-      navigate(isFamily ? 'familyDash' : 'dashboard', { groupId });
+      navigate(dashRoute(type), { groupId });
     } catch {
       setError('Failed to create. Try again.');
     } finally {
@@ -49,16 +51,16 @@ export default function CreateGroupScreen({ navigate, params }) {
     <div className="content" key="s0">
       <div style={{ padding: '8px 0 4px' }}>
         <div style={{ fontWeight: 900, fontSize: 24, letterSpacing: '-0.03em', marginBottom: 6 }}>
-          {isFamily ? '🎉 Name your event' : '✈️ Name your trip'}
+          {isFamily ? '🎉 Name your event' : isSplitwise ? '💸 Name your group' : '✈️ Name your trip'}
         </div>
         <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-          {isFamily ? 'e.g. Diwali 2025, Annual Family Reunion' : 'e.g. Goa 2025, Office Trip'}
+          {isFamily ? 'e.g. Diwali 2025, Annual Family Reunion' : isSplitwise ? 'e.g. Flatmates, Goa Squad, Office Lunch' : 'e.g. Goa 2025, Office Trip'}
         </div>
       </div>
       <input
         className="input"
         style={{ fontSize: 20, fontWeight: 700, padding: '16px 18px' }}
-        placeholder={isFamily ? 'Diwali 2025 🪔' : 'Goa Trip 🏖️'}
+        placeholder={isFamily ? 'Diwali 2025 🪔' : isSplitwise ? 'Flatmates 🏡' : 'Goa Trip 🏖️'}
         value={name}
         onChange={e => setName(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && name.trim() && setStep(1)}
@@ -70,13 +72,17 @@ export default function CreateGroupScreen({ navigate, params }) {
       </button>
     </div>,
 
-    // ── Step 1 (Family): Members | Step 1 (Trip): Mode
-    isFamily ? (
+    // ── Step 1 (Family/Splitwise): Members | Step 1 (Trip): Mode
+    skipModeStep ? (
       <div className="content" key="s1f">
-        <div style={{ fontWeight: 900, fontSize: 22, letterSpacing: '-0.03em', marginBottom: 4 }}>Add Participants</div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 4 }}>Optional — you can add more later. Contributors don't need to be pre-registered.</div>
+        <div style={{ fontWeight: 900, fontSize: 22, letterSpacing: '-0.03em', marginBottom: 4 }}>
+          {isSplitwise ? 'Add Members' : 'Add Participants'}
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 4 }}>
+          {isSplitwise ? 'Add everyone in the group — you can add more later.' : "Optional — you can add more later. Contributors don't need to be pre-registered."}
+        </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <input className="input" placeholder="Participant name" value={newMember}
+          <input className="input" placeholder={isSplitwise ? 'Member name' : 'Participant name'} value={newMember}
             onChange={e => { setNewMember(e.target.value); setError(''); }}
             onKeyDown={e => e.key === 'Enter' && addLocal()} autoFocus />
           <button className="btn btn-primary btn-icon" onClick={addLocal}><Plus size={18} /></button>
@@ -93,7 +99,7 @@ export default function CreateGroupScreen({ navigate, params }) {
         ))}
         {error && <div style={{ fontSize: 13, color: 'var(--red)', textAlign: 'center' }}>{error}</div>}
         <button className="btn btn-primary" onClick={handleCreate} disabled={loading}>
-          {loading ? 'Creating…' : `🎉 Create ${name}`}
+          {loading ? 'Creating…' : isSplitwise ? `💸 Create ${name}` : `🎉 Create ${name}`}
         </button>
       </div>
     ) : (
@@ -117,7 +123,7 @@ export default function CreateGroupScreen({ navigate, params }) {
     ),
 
     // ── Step 2 (Trip only): Members
-    !isFamily ? (
+    !skipModeStep ? (
       <div className="content" key="s2t">
         <div style={{ fontWeight: 900, fontSize: 22, letterSpacing: '-0.03em', marginBottom: 4 }}>Who's coming?</div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -146,7 +152,7 @@ export default function CreateGroupScreen({ navigate, params }) {
 
   return (
     <div className="screen">
-      <Header title={isFamily ? 'New Event' : 'New Trip'} subtitle={`Step ${step+1} of ${totalSteps}`}
+      <Header title={isFamily ? 'New Event' : isSplitwise ? 'New Split Group' : 'New Trip'} subtitle={`Step ${step+1} of ${totalSteps}`}
         onBack={() => step > 0 ? setStep(step-1) : navigate('home')} />
       <div className="steps">
         {Array.from({ length: totalSteps }, (_,i) => (

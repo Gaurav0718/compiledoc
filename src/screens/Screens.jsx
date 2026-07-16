@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { getGroupData, getGroupData as getGroupDataStatic, getAuditLogs as getAuditLogsStatic, getGroup as getGroupStatic, addCollection, updateCollection, deleteCollection, addExpense, updateExpense, deleteExpense, checkIsAdmin } from '../db/database';
 import { getFamilyTally, getCategoryTotals, calculateBalances, calculateSettlements } from '../logic/calculations';
 import { exportXLSX, exportPDF } from '../logic/export';
-import { Header, PaymentBadge, fmt, fmtDate, EmptyState } from '../components/ui';
+import { Header, PaymentBadge, fmt, fmtDate, EmptyState, dashRoute } from '../components/ui';
 import TransactionForm from '../components/TransactionForm';
 import { useAuth } from '../hooks/useAuth';
 import { sounds } from '../logic/sounds';
@@ -82,12 +82,11 @@ export function CollectionListScreen({ navigate, groupId }) {
   const filtered = search ? collections.filter(c => c.member_name.toLowerCase().includes(search.toLowerCase())||(c.notes||'').toLowerCase().includes(search.toLowerCase())) : collections;
   const total = collections.reduce((s,c)=>s+c.amount,0);
   const tally = getFamilyTally(collections, data.expenses);
-  const isFamily = group?.type === 'family';
 
   return (
     <div className="screen">
       <Header title="Collections" subtitle={`${collections.length} entries · ${fmt(total)}`}
-        onBack={() => navigate(isFamily?'familyDash':'dashboard', { groupId })}
+        onBack={() => navigate(dashRoute(group?.type), { groupId })}
         right={<button className="icon-btn glow-b" onClick={() => exportXLSX(group.name, collections, data.expenses, tally, members)}><Download size={15}/></button>}
       />
       <div className="content">
@@ -95,7 +94,7 @@ export function CollectionListScreen({ navigate, groupId }) {
         <div className="card" style={{ background:'var(--green-bg)', borderColor:'var(--green)', padding:'14px 18px' }}>
           <div className="flex-between">
             <span style={{ fontSize:13, color:'var(--text2)' }}>Total Collected</span>
-            <span style={{ fontWeight:800, fontSize:22, color:'var(--green)', letterSpacing:'-0.03em' }}>{fmt(total)}</span>
+            <span style={{ fontWeight:700, fontSize:22, color:'var(--green)', letterSpacing:'-0.03em' }}>{fmt(total)}</span>
           </div>
           <div className="flex-between" style={{ marginTop:6 }}>
             <span style={{ fontSize:12, color:'var(--text3)' }}>Contributors: {new Set(collections.map(c=>c.member_name)).size}</span>
@@ -163,12 +162,11 @@ export function ExpenseListScreen({ navigate, groupId }) {
   if (search) filtered = filtered.filter(e=>(e.notes||'').toLowerCase().includes(search.toLowerCase())||e.category.toLowerCase().includes(search.toLowerCase()));
   const total = filtered.reduce((s,e)=>s+e.amount,0);
   const tally = getFamilyTally(data.collections, expenses);
-  const isFamily = group?.type === 'family';
 
   return (
     <div className="screen">
       <Header title="Expenses" subtitle={`${filtered.length} items · ${fmt(total)}`}
-        onBack={() => navigate(isFamily?'familyDash':'dashboard', { groupId })}
+        onBack={() => navigate(dashRoute(group?.type), { groupId })}
         right={<button className="icon-btn glow-b" onClick={() => exportXLSX(group.name, data.collections, expenses, tally, members)}><Download size={15}/></button>}
       />
       <div className="content">
@@ -185,7 +183,7 @@ export function ExpenseListScreen({ navigate, groupId }) {
         <div className="card" style={{ background:'var(--accent-bg)', borderColor:'var(--accent)', padding:'14px 18px' }}>
           <div className="flex-between">
             <span style={{ fontSize:13, color:'var(--text2)' }}>{filter==='All'?'Total Expenses':filter}</span>
-            <span style={{ fontWeight:800, fontSize:22, color:'var(--accent)', letterSpacing:'-0.03em' }}>{fmt(total)}</span>
+            <span style={{ fontWeight:700, fontSize:22, color:'var(--accent)', letterSpacing:'-0.03em' }}>{fmt(total)}</span>
           </div>
         </div>
         {isAdmin && (
@@ -224,7 +222,6 @@ export function ActivityLogScreen({ navigate, groupId }) {
   }, [groupId]);
 
   const filtered = filter==='All' ? logs : logs.filter(l=>l.entity===filter);
-  const isFamily = group?.type==='family';
 
   function timeAgo(val) {
     if (!val) return 'some time ago';
@@ -242,10 +239,10 @@ export function ActivityLogScreen({ navigate, groupId }) {
 
   return (
     <div className="screen">
-      <Header title="Activity Log" subtitle={`${logs.length} events`} onBack={()=>navigate(isFamily?'familyDash':'dashboard',{groupId})} />
+      <Header title="Activity Log" subtitle={`${logs.length} events`} onBack={()=>navigate(dashRoute(group?.type),{groupId})} />
       <div className="content">
         <div className="filter-row">
-          {['All','collection','expense','member'].map(e=>(
+          {['All','collection','expense','settlement','member','group'].map(e=>(
             <button key={e} className={`filter-chip ${filter===e?'active':''}`} onClick={()=>setFilter(e)}>
               {e==='All'?'All':e.charAt(0).toUpperCase()+e.slice(1)+'s'}
             </button>
@@ -292,7 +289,7 @@ export function SettlementScreen({ navigate, groupId }) {
         {settlements.length===0 ? (
           <div style={{ textAlign:'center', padding:'56px 20px' }}>
             <div style={{ fontSize:52 }}>🎉</div>
-            <div style={{ fontWeight:800, fontSize:20, letterSpacing:'-0.03em', marginTop:12 }}>All Settled!</div>
+            <div style={{ fontWeight:600, fontSize:20, letterSpacing:'-0.01em', marginTop:12 }}>All Settled!</div>
             <div style={{ color:'var(--text2)', fontSize:14, marginTop:6 }}>Everyone is even.</div>
           </div>
         ) : settlements.map((s,i)=>(
@@ -306,7 +303,7 @@ export function SettlementScreen({ navigate, groupId }) {
               <div style={{ fontSize:11, color:'var(--text3)', margin:'2px 0' }}>↓ pays</div>
               <div style={{ fontSize:13, color:'var(--text2)' }}>{s.to}</div>
             </div>
-            <div style={{ fontWeight:800, fontSize:18, color:'var(--pink)', letterSpacing:'-0.03em' }}>{fmt(s.amount)}</div>
+            <div style={{ fontWeight:700, fontSize:18, color:'var(--pink)', letterSpacing:'-0.03em' }}>{fmt(s.amount)}</div>
           </div>
         ))}
         <div className="section-title" style={{ marginTop:8 }}>Balances</div>
@@ -361,7 +358,7 @@ export function BudgetCalculatorScreen({ navigate }) {
           {totalBudget>0 && (
             <div style={{ marginTop:12, textAlign:'center' }}>
               <div style={{ fontSize:10, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'0.08em' }}>Estimated Total</div>
-              <div style={{ fontWeight:800, fontSize:30, color:'var(--accent)', letterSpacing:'-0.04em', marginTop:4 }}>{fmt(totalBudget)}</div>
+              <div style={{ fontWeight:700, fontSize:30, color:'var(--accent)', letterSpacing:'-0.04em', marginTop:4 }}>{fmt(totalBudget)}</div>
             </div>
           )}
         </div>

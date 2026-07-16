@@ -21,6 +21,10 @@ cache.version(1).stores({
   sync_queue:  '++id, created_at',
   kv:          'k',
 });
+cache.version(2).stores({
+  expense_splits: '++id, expense_id',
+  settlements:    'settlement_id, group_id',
+});
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const online  = () => navigator.onLine && isConfigured();
@@ -41,6 +45,7 @@ const withId = {
   coll:   c => c ? { ...c, id: c.collection_id ?? c.id } : null,
   log:    l => l ? { ...l, id: l.lid           ?? l.id ?? Math.random() } : null,
   user:   u => u ? { ...u, uid: u.user_id ?? u.uid, displayName: u.display_name ?? u.displayName } : null,
+  settle: s => s ? { ...s, id: s.settlement_id  ?? s.id } : null,
 };
 
 // ─── USER ID FORMAT ───────────────────────────────────────────────────────────
@@ -109,8 +114,8 @@ export async function loginUser({ username, pin }) {
   return withId.user(user);
 }
 
-export async function setupParticipantAccount(args) {
-  return registerUser(args);
+export async function setupParticipantAccount({ participant_id, ...rest }) {
+  return registerUser({ username: participant_id, ...rest });
 }
 
 export async function participantHasAccount(pid) {
@@ -307,8 +312,8 @@ export async function checkIsAdmin(group_id, user) {
   const admins = members.filter(m => m.role === 'admin');
   const uid = (user.user_id || user.uid || user.username || '').toLowerCase().trim();
 
-  if (admins.length === 0) return true;                     // open group
-  if ((group?.owner_id || '').toLowerCase() === uid) return true;
+  if ((group?.owner_id || '').toLowerCase() === uid) return true;   // owner is always admin
+  if (admins.length === 0) return false;                            // no admins yet: owner-only, not everyone
   if (admins.some(a => (a.participant_id || '').toLowerCase().trim() === uid)) return true;
   const name = (user.display_name || user.displayName || '').toLowerCase().trim();
   if (name && admins.some(a => (a.name || '').toLowerCase().trim() === name)) return true;
@@ -316,7 +321,7 @@ export async function checkIsAdmin(group_id, user) {
 }
 
 // ─── EXPENSES ─────────────────────────────────────────────────────────────────
-export async function addExpense({ group_id, uid, amount, paid_by, category, notes, payment_mode, proof_image, date, by }) {
+export async function addExpense({ group_id, uid, amount, paid_by, category, notes, payment_mode, proof_image, date, by, splits }) {
   const expense_id = newId();
   const rec = {
     expense_id, group_id, created_by: uid,
@@ -337,11 +342,12 @@ export async function addExpense({ group_id, uid, amount, paid_by, category, not
     await enqueue('expenses', 'insert', rec);
   }
   await cache.expenses.put(rec);
+  if (splits) await replaceExpenseSplits(expense_id, splits);
   await _log(group_id, uid, 'add', 'expense', by, `₹${amount} – ${category}`);
   return expense_id;
 }
 
-export async function updateExpense({ id, group_id, uid, amount, paid_by, category, notes, payment_mode, proof_image, date, by }) {
+export async function updateExpense({ id, group_id, uid, amount, paid_by, category, notes, payment_mode, proof_image, date, by, splits }) {
   const expense_id = id; // id is the alias
   const upd = {
     amount: parseFloat(amount) || 0,
@@ -359,6 +365,42 @@ export async function updateExpense({ id, group_id, uid, amount, paid_by, catego
   }
   await _log(group_id, uid, 'edit', 'expense', by, `Edited ₹${amount}`);
   await cache.expenses.where('expense_id').equals(expense_id).modify(upd);
+  if (splits) await replaceExpenseSplits(expense_id, splits);
+}
+
+// ─── EXPENSE SPLITS (Splitwise-style exact per-member shares) ─────────────────
+async function replaceExpenseSplits(expense_id, splits) {
+  const rows = (splits || []).map(s => ({
+    expense_id, member_id: s.member_id, share: parseFloat(s.share) || 0,
+  }));
+  if (online()) {
+    await sb(s => s.from('expense_splits').delete().eq('expense_id', expense_id));
+    if (rows.length) await sb(s => s.from('expense_splits').insert(rows));
+  } else {
+    await enqueue('expense_splits', 'delete', { expense_id });
+    if (rows.length) await enqueue('expense_splits', 'insert', rows);
+  }
+  await cache.expense_splits.where('expense_id').equals(expense_id).delete();
+  for (const r of rows) await cache.expense_splits.add(r).catch(() => {});
+}
+
+export async function getExpenseSplits(expenseIds) {
+  if (!expenseIds || !expenseIds.length) return {};
+  let rows = [];
+  if (online()) {
+    const { data } = await sb(s => s.from('expense_splits').select('*').in('expense_id', expenseIds));
+    if (data) {
+      rows = data;
+      for (const id of expenseIds) await cache.expense_splits.where('expense_id').equals(id).delete().catch(() => {});
+      for (const r of rows) await cache.expense_splits.add(r).catch(() => {});
+    }
+  }
+  if (!rows.length) {
+    rows = await cache.expense_splits.where('expense_id').anyOf(expenseIds).toArray();
+  }
+  const map = {};
+  for (const r of rows) (map[r.expense_id] ||= []).push({ member_id: r.member_id, share: r.share });
+  return map;
 }
 
 export async function deleteExpense(id, group_id, uid, by) {
@@ -504,6 +546,74 @@ export async function getAuditLogs(group_id) {
   return rows.map(withId.log);
 }
 
+// ─── SETTLEMENTS (Splitwise-style "settle up" payments) ───────────────────────
+export async function addSettlement({ group_id, uid, from_member, to_member, amount, notes, date, by }) {
+  const settlement_id = newId();
+  const rec = {
+    settlement_id, group_id, created_by: uid,
+    from_member, to_member,
+    amount: parseFloat(amount) || 0,
+    notes: notes || '',
+    date: date || today(),
+    created_at: new Date().toISOString(),
+    deleted: false,
+  };
+  if (online()) {
+    const { error } = await sb(s => s.from('settlements').insert(rec));
+    if (error) throw new Error(error.message);
+  } else {
+    await enqueue('settlements', 'insert', rec);
+  }
+  await cache.settlements.put(rec);
+  await _log(group_id, uid, 'add', 'settlement', by, `₹${amount} settled`);
+  return settlement_id;
+}
+
+export async function deleteSettlement(id, group_id, uid, by) {
+  const settlement_id = id;
+  if (online()) {
+    await sb(s => s.from('settlements').update({ deleted: true }).eq('settlement_id', settlement_id));
+  } else {
+    await enqueue('settlements', 'update', { settlement_id, deleted: true });
+  }
+  await _log(group_id, uid, 'delete', 'settlement', by, `Removed a settlement`);
+  await cache.settlements.where('settlement_id').equals(settlement_id).modify({ deleted: true });
+}
+
+export async function getSettlements(group_id) {
+  let rows = [];
+  if (online()) {
+    const { data } = await sb(s =>
+      s.from('settlements').select('*')
+        .eq('group_id', group_id).eq('deleted', false)
+        .order('date', { ascending: false })
+    );
+    if (data) {
+      rows = data;
+      await cache.settlements.where('group_id').equals(group_id).delete();
+      for (const r of rows) await cache.settlements.put(r).catch(() => {});
+    }
+  }
+  if (!rows.length) {
+    rows = (await cache.settlements.where('group_id').equals(group_id).toArray())
+      .filter(s => !s.deleted);
+  }
+  return rows
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .map(withId.settle);
+}
+
+// ─── CLOSE / REOPEN GROUP (Splitwise-style "close out") ───────────────────────
+export async function closeGroup(group_id, closed, uid, by) {
+  if (online()) {
+    await sb(s => s.from('groups').update({ closed }).eq('group_id', group_id));
+  } else {
+    await enqueue('groups', 'update', { group_id, closed });
+  }
+  await _log(group_id, uid, 'edit', 'group', by, closed ? 'Closed the group' : 'Reopened the group');
+  await cache.groups.where('group_id').equals(group_id).modify({ closed });
+}
+
 // ─── FULL GROUP DATA ──────────────────────────────────────────────────────────
 export async function getGroupData(group_id) {
   const [group, members, expenses, collections] = await Promise.all([
@@ -531,7 +641,12 @@ export async function getGroupData(group_id) {
     members.push(withId.member(memberRec));
   }
 
-  return { group, members, expenses, collections, participantsMap: {} };
+  const [settlements, splitsMap] = await Promise.all([
+    getSettlements(group_id),
+    getExpenseSplits(expenses.map(e => e.id)),
+  ]);
+
+  return { group, members, expenses, collections, settlements, splitsMap, participantsMap: {} };
 }
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
@@ -577,10 +692,12 @@ if (typeof window !== 'undefined') {
 
 // ─── DELETE GROUP ─────────────────────────────────────────────────────────────
 export async function deleteGroup(group_id, uid) {
+  const expenseIds = (await cache.expenses.where('group_id').equals(group_id).primaryKeys()).map(String);
   if (online()) {
     // Cascade delete all related data
     await sb(s => s.from('collections').delete().eq('group_id', group_id));
-    await sb(s => s.from('expenses').delete().eq('group_id', group_id));
+    await sb(s => s.from('settlements').delete().eq('group_id', group_id));
+    await sb(s => s.from('expenses').delete().eq('group_id', group_id)); // expense_splits cascade via FK
     await sb(s => s.from('members').delete().eq('group_id', group_id));
     await sb(s => s.from('audit_logs').delete().eq('group_id', group_id));
     await sb(s => s.from('groups').delete().eq('group_id', group_id));
@@ -589,6 +706,8 @@ export async function deleteGroup(group_id, uid) {
   }
   // Clear local cache
   await cache.collections.where('group_id').equals(group_id).delete();
+  await cache.settlements.where('group_id').equals(group_id).delete();
+  if (expenseIds.length) await cache.expense_splits.where('expense_id').anyOf(expenseIds).delete();
   await cache.expenses.where('group_id').equals(group_id).delete();
   await cache.members.where('group_id').equals(group_id).delete();
   await cache.audit_logs.where('group_id').equals(group_id).delete();

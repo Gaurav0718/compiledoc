@@ -18,6 +18,35 @@ export function calculateBalances(members, expenses, participantsMap, collection
   return Object.values(map);
 }
 
+// Splitwise-style balances: exact per-member shares (splitsMap) + recorded settle-up payments.
+// Falls back to an equal split across all members when an expense has no recorded splits.
+export function calculateSplitwiseBalances(members, expenses, splitsMap, settlements) {
+  const map = {};
+  members.forEach(m => { map[m.id] = { ...m, paid: 0, share: 0, balance: 0 }; });
+
+  expenses.forEach(e => { if (e.paid_by && map[e.paid_by]) map[e.paid_by].paid += e.amount; });
+
+  expenses.forEach(e => {
+    const splits = splitsMap && splitsMap[e.id];
+    if (splits && splits.length) {
+      splits.forEach(({ member_id, share }) => { if (map[member_id]) map[member_id].share += share; });
+    } else {
+      const ids = Object.keys(map);
+      if (!ids.length) return;
+      const share = e.amount / ids.length;
+      ids.forEach(mid => { map[mid].share += share; });
+    }
+  });
+
+  (settlements || []).forEach(s => {
+    if (map[s.from_member]) map[s.from_member].balance += s.amount;
+    if (map[s.to_member])   map[s.to_member].balance   -= s.amount;
+  });
+
+  Object.values(map).forEach(m => { m.balance += m.paid - m.share; });
+  return Object.values(map);
+}
+
 export function calculateSettlements(balances) {
   const creditors = balances.filter(m => m.balance > 0.01).map(m => ({ ...m, rem: m.balance })).sort((a,b) => b.rem - a.rem);
   const debtors   = balances.filter(m => m.balance < -0.01).map(m => ({ ...m, rem: Math.abs(m.balance) })).sort((a,b) => b.rem - a.rem);

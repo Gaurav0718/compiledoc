@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getGroupData, addMember, removeMember, updateMemberRole, updateGroupName, checkIsAdmin, deleteGroup, updateMemberName } from '../db/database';
-import { Header } from '../components/ui';
+import { Header, dashRoute } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { sounds } from '../logic/sounds';
 import { Plus, Trash2, ShieldCheck, ShieldOff, Edit3, Copy, Check } from 'lucide-react';
@@ -74,7 +74,6 @@ export default function AdminPanelScreen({ navigate, groupId }) {
     sounds.tap();
   };
 
-  const isFamily = data?.group?.type === 'family';
   if (!data) return <div className="screen"><div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)'}}>Loading…</div></div>;
 
   const admins  = data.members.filter(m => m.role === 'admin');
@@ -83,7 +82,7 @@ export default function AdminPanelScreen({ navigate, groupId }) {
   return (
     <div className="screen">
       <Header title="Admin Panel" subtitle={data.group?.name}
-        onBack={() => navigate(isFamily ? 'familyDash' : 'dashboard', { groupId })}
+        onBack={() => navigate(dashRoute(data?.group?.type), { groupId })}
         right={<span style={{fontSize:11,color:'var(--accent)',fontWeight:600,background:'var(--accent-bg)',padding:'4px 10px',borderRadius:20,border:'1px solid var(--accent)'}}>🛡️ Admin</span>}
       />
       <div className="content">
@@ -117,7 +116,7 @@ export default function AdminPanelScreen({ navigate, groupId }) {
             </div>
             <div style={{display:'flex',alignItems:'center',gap:10,background:'var(--surface3)',borderRadius:10,padding:'10px 14px',cursor:'pointer'}}
               onClick={() => copyPid(lastAdded.participant_id)}>
-              <code style={{flex:1,fontFamily:'monospace',fontSize:18,fontWeight:800,color:'var(--accent)',letterSpacing:'0.04em'}}>
+              <code style={{flex:1,fontFamily:'monospace',fontSize:18,fontWeight:700,color:'var(--accent)',letterSpacing:'0.04em'}}>
                 {lastAdded.participant_id}
               </code>
               {copied ? <Check size={18} style={{color:'var(--green)'}}/> : <Copy size={16} style={{color:'var(--text3)'}}/>}
@@ -147,7 +146,7 @@ export default function AdminPanelScreen({ navigate, groupId }) {
                 </div>
               </div>
               <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                {m.name === user?.displayName
+                {(m.participant_id || '').toLowerCase().trim() === (user?.uid || user?.participant_id || user?.user_id || '').toLowerCase().trim()
                   ? <span style={{fontSize:11,color:'var(--text3)',fontStyle:'italic'}}>You</span>
                   : isAdmin && (
                     <>

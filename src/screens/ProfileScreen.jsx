@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getVisibleGroups, resetPin, getSecurityQuestion, setSetting, getSetting, changeUserId } from '../db/database';
-import { Header, ThemeToggle, fmt } from '../components/ui';
+import { Header, fmt, dashRoute } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
-import { useTheme } from '../hooks/useTheme';
 import { sounds } from '../logic/sounds';
-import { Delete, Camera, ChevronRight, Shield, LogOut, Moon, Sun, Users } from 'lucide-react';
+import { Delete, Camera, ChevronRight, Shield, LogOut, Users } from 'lucide-react';
 
 const SECURITY_QUESTIONS = [
   "What is your mother's maiden name?",
@@ -55,7 +54,6 @@ function PinPad({ value, onChange, onComplete, loading }) {
 
 export default function ProfileScreen({ navigate }) {
   const { user, login, logout } = useAuth();
-  const { theme } = useTheme();
   const fileRef = useRef();
 
   const [groups, setGroups]         = useState([]);
@@ -151,8 +149,9 @@ export default function ProfileScreen({ navigate }) {
   const username    = user.username || user.user_id || uid;
 
   const TYPE_META = {
-    family: { icon: '🏠', label: 'Family Get-together' },
-    trip:   { icon: '✈️', label: 'Trip Expense Audit' },
+    family:    { icon: '🏠', label: 'Family Get-together', chip: 'family' },
+    trip:      { icon: '✈️', label: 'Trip Expense Audit',  chip: 'trip' },
+    splitwise: { icon: '💸', label: 'Split Expenses',      chip: 'splitwise' },
   };
 
   return (
@@ -168,7 +167,7 @@ export default function ProfileScreen({ navigate }) {
             {avatar
               ? <img src={avatar} alt="avatar" style={{ width:88, height:88, borderRadius:'50%', objectFit:'cover', border:'3px solid var(--accent)', boxShadow:'0 0 20px var(--accent-glow)' }}/>
               : (
-                <div style={{ width:88, height:88, borderRadius:'50%', background:'var(--grad-main)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, fontWeight:800, color:'#fff', boxShadow:'0 0 20px var(--accent-glow)' }}>
+                <div style={{ width:88, height:88, borderRadius:'50%', background:'var(--grad-main)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, fontWeight:700, color:'#fff', boxShadow:'0 0 20px var(--accent-glow)' }}>
                   {displayName[0]?.toUpperCase() || '?'}
                 </div>
               )
@@ -178,7 +177,7 @@ export default function ProfileScreen({ navigate }) {
             </div>
           </div>
           <div style={{ textAlign:'center' }}>
-            <div style={{ fontWeight:800, fontSize:20, letterSpacing:'-0.02em', color:'var(--text)' }}>{displayName}</div>
+            <div style={{ fontWeight:600, fontSize:20, letterSpacing:'-0.01em', color:'var(--text)' }}>{displayName}</div>
             <div style={{ fontSize:13, color:'var(--text3)', marginTop:3, fontFamily:'monospace' }}>@{username}</div>
           </div>
         </div>
@@ -199,10 +198,10 @@ export default function ProfileScreen({ navigate }) {
               sub: `Current: @${username}`,
               action: () => { setNewUserId(''); setIdError(''); setIdSuccess(''); setIdPinStep('form'); setIdVerifyPin(''); setSheet('userid'); },
             },
-          ].map((item, i) => (
+          ].map((item, i, arr) => (
             <button key={i} onClick={item.action}
-              style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:'none', border:'none', cursor:'pointer', textAlign:'left', borderBottom:'1px solid var(--border)' }}>
-              <div style={{ width:36, height:36, borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:'none', border:'none', cursor:'pointer', textAlign:'left', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div style={{ width:36, height:36, borderRadius:6, background:'var(--surface2)', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                 {item.icon}
               </div>
               <div style={{ flex:1 }}>
@@ -212,18 +211,6 @@ export default function ProfileScreen({ navigate }) {
               <ChevronRight size={15} style={{ color:'var(--text3)' }}/>
             </button>
           ))}
-          <div style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px' }}>
-            <div style={{ width:36, height:36, borderRadius:10, background:'var(--surface2)', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              {theme === 'dark' ? <Moon size={16} style={{ color:'var(--blue)' }}/> : <Sun size={16} style={{ color:'var(--accent)' }}/>}
-            </div>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:14, fontWeight:600, color:'var(--text)' }}>
-                {theme === 'dark' ? 'Dark Theme' : 'Light Theme'}
-              </div>
-              <div style={{ fontSize:12, color:'var(--text3)', marginTop:2 }}>Tap to switch</div>
-            </div>
-            <ThemeToggle/>
-          </div>
         </div>
 
         {/* ── MY GROUPS ── */}
@@ -238,8 +225,8 @@ export default function ProfileScreen({ navigate }) {
           return (
             <button key={g.id} className="card-sm"
               style={{ display:'flex', alignItems:'center', gap:12, cursor:'pointer', width:'100%', textAlign:'left' }}
-              onClick={() => navigate(g.type === 'family' ? 'familyDash' : 'dashboard', { groupId: g.id })}>
-              <div style={{ width:40, height:40, borderRadius:12, background:'var(--surface2)', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>
+              onClick={() => navigate(dashRoute(g.type), { groupId: g.id })}>
+              <div className={`type-chip type-chip-xs ${meta.chip}`}>
                 {meta.icon}
               </div>
               <div style={{ flex:1, minWidth:0 }}>

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getVisibleGroups, getSetting } from '../db/database';
-import { ThemeToggle, fmt } from '../components/ui';
+import { ThemeToggle, fmt, dashRoute } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { ChevronRight, Calculator } from 'lucide-react';
 
 const TYPE_META = {
-  family: { icon: '🏠', label: 'Family Get-together', color: 'var(--accent)' },
-  trip:   { icon: '✈️', label: 'Trip Expense Audit',  color: 'var(--blue)' },
+  family:    { icon: '🏠', label: 'Family Get-together', chip: 'family' },
+  trip:      { icon: '✈️', label: 'Trip Expense Audit',  chip: 'trip' },
+  splitwise: { icon: '💸', label: 'Split Expenses',      chip: 'splitwise' },
 };
 
 export default function HomeScreen({ navigate }) {
@@ -49,31 +50,41 @@ export default function HomeScreen({ navigate }) {
 
       <div className="content">
         <div style={{ padding: '8px 0 4px' }}>
-          <div style={{ fontWeight: 900, fontSize: 26, letterSpacing: '-0.04em', background: 'var(--grad-main)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+          <div style={{ fontWeight: 600, fontSize: 26, letterSpacing: '-0.01em', color: 'var(--accent)' }}>
             CompileDoc
           </div>
           <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 3 }}>What are you tracking today?</div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div className="mode-card" onClick={() => navigate('create', { type: 'family' })}>
+          <div className="mode-card type-family" onClick={() => navigate('create', { type: 'family' })}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ fontSize: 36, filter: 'drop-shadow(0 0 8px rgba(167,139,250,0.5))' }}>🏠</div>
+              <div className="type-chip family">🏠</div>
               <div style={{ flex: 1 }}>
                 <div className="mode-card-title">Family Get-together</div>
                 <div className="mode-card-desc">Pool contributions, track event expenses, tally live. No equal split.</div>
               </div>
-              <div style={{ color: 'var(--accent)', opacity: 0.5 }}><ChevronRight size={18} /></div>
+              <div style={{ color: 'var(--blue)', opacity: 0.6 }}><ChevronRight size={18} /></div>
             </div>
           </div>
-          <div className="mode-card" onClick={() => navigate('create', { type: 'trip' })}>
+          <div className="mode-card type-trip" onClick={() => navigate('create', { type: 'trip' })}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ fontSize: 36, filter: 'drop-shadow(0 0 8px rgba(96,165,250,0.5))' }}>✈️</div>
+              <div className="type-chip trip">✈️</div>
               <div style={{ flex: 1 }}>
                 <div className="mode-card-title">Trip Expense Audit</div>
                 <div className="mode-card-desc">Log expenses, split fairly, settle debts with min transactions.</div>
               </div>
-              <div style={{ color: 'var(--blue)', opacity: 0.5 }}><ChevronRight size={18} /></div>
+              <div style={{ color: 'var(--accent2)', opacity: 0.6 }}><ChevronRight size={18} /></div>
+            </div>
+          </div>
+          <div className="mode-card type-splitwise" onClick={() => navigate('create', { type: 'splitwise' })}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="type-chip splitwise">💸</div>
+              <div style={{ flex: 1 }}>
+                <div className="mode-card-title">Split Expenses</div>
+                <div className="mode-card-desc">Splitwise-style group expenses — who owes whom, settle up, close out.</div>
+              </div>
+              <div style={{ color: 'var(--accent)', opacity: 0.6 }}><ChevronRight size={18} /></div>
             </div>
           </div>
         </div>
@@ -87,11 +98,11 @@ export default function HomeScreen({ navigate }) {
               return (
                 <div key={g.id} className="card-sm"
                   style={{ display:'flex', alignItems:'center', gap:12, background:'var(--surface)', border:'1px solid var(--border)' }}>
-                  <div style={{ width:44, height:44, borderRadius:13, background:'var(--surface2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0, border:'1px solid var(--border)' }}>
+                  <div className={`type-chip type-chip-sm ${meta.chip}`}>
                     {meta.icon}
                   </div>
                   <div style={{ flex:1, minWidth:0, cursor:'pointer' }}
-                    onClick={() => navigate(g.type === 'family' ? 'familyDash' : 'dashboard', { groupId: g.id })}>
+                    onClick={() => navigate(dashRoute(g.type), { groupId: g.id })}>
                     <div style={{ fontWeight:700, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'var(--text)' }}>
                       {g.name}
                     </div>
@@ -121,7 +132,7 @@ export default function HomeScreen({ navigate }) {
                       🔗 Link
                     </button>
                     <ChevronRight size={15} style={{ color:'var(--text3)', cursor:'pointer' }}
-                      onClick={() => navigate(g.type === 'family' ? 'familyDash' : 'dashboard', { groupId: g.id })} />
+                      onClick={() => navigate(dashRoute(g.type), { groupId: g.id })} />
                   </div>
                 </div>
               );

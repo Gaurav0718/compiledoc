@@ -97,6 +97,33 @@ create table if not exists audit_logs (
   created_at  timestamptz default now()
 );
 
+-- SPLIT EXPENSES ("Splitwise-style" group type) ─────────────────────────────
+-- Groups can now be closed/reopened (read-only when closed)
+alter table groups add column if not exists closed boolean not null default false;
+
+-- Exact per-member share of an expense (equal / unequal / percentage splits)
+create table if not exists expense_splits (
+  id         bigserial primary key,
+  expense_id text not null references expenses(expense_id) on delete cascade,
+  member_id  text not null,
+  share      numeric not null,
+  created_at timestamptz default now()
+);
+
+-- Recorded "settle up" payments between two members
+create table if not exists settlements (
+  settlement_id text primary key,
+  group_id      text not null references groups(group_id) on delete cascade,
+  from_member   text not null,
+  to_member     text not null,
+  amount        numeric not null,
+  notes         text default '',
+  date          date not null,
+  created_by    text not null,
+  created_at    timestamptz default now(),
+  deleted       boolean not null default false
+);
+
 -- INDEXES for performance
 create index if not exists idx_groups_owner      on groups(owner_id);
 create index if not exists idx_members_group     on members(group_id);
@@ -104,27 +131,35 @@ create index if not exists idx_members_pid       on members(participant_id);
 create index if not exists idx_expenses_group    on expenses(group_id);
 create index if not exists idx_collections_group on collections(group_id);
 create index if not exists idx_audit_group       on audit_logs(group_id);
+create index if not exists idx_splits_expense    on expense_splits(expense_id);
+create index if not exists idx_settlements_group on settlements(group_id);
 
 -- ROW LEVEL SECURITY (public read for view links, auth write)
 -- For simplicity with the offline PIN system, we use anon key with RLS disabled.
 -- In production you'd enable RLS. For now:
-alter table users        enable row level security;
-alter table groups       enable row level security;
-alter table members      enable row level security;
-alter table expenses     enable row level security;
-alter table collections  enable row level security;
-alter table audit_logs   enable row level security;
+alter table users           enable row level security;
+alter table groups          enable row level security;
+alter table members         enable row level security;
+alter table expenses        enable row level security;
+alter table collections     enable row level security;
+alter table audit_logs      enable row level security;
+alter table expense_splits  enable row level security;
+alter table settlements     enable row level security;
 
 -- Allow full access via anon key (you control access in app logic)
-create policy "allow_all" on users        for all using (true) with check (true);
-create policy "allow_all" on groups       for all using (true) with check (true);
-create policy "allow_all" on members      for all using (true) with check (true);
-create policy "allow_all" on expenses     for all using (true) with check (true);
-create policy "allow_all" on collections  for all using (true) with check (true);
-create policy "allow_all" on audit_logs   for all using (true) with check (true);
+create policy "allow_all" on users           for all using (true) with check (true);
+create policy "allow_all" on groups          for all using (true) with check (true);
+create policy "allow_all" on members         for all using (true) with check (true);
+create policy "allow_all" on expenses        for all using (true) with check (true);
+create policy "allow_all" on collections     for all using (true) with check (true);
+create policy "allow_all" on audit_logs      for all using (true) with check (true);
+create policy "allow_all" on expense_splits  for all using (true) with check (true);
+create policy "allow_all" on settlements     for all using (true) with check (true);
 ```
 
 4. You should see "Success. No rows returned."
+
+**Already have an older Supabase project?** Existing installs only need the new block above — run it once in the SQL Editor to add `groups.closed`, `expense_splits`, and `settlements` alongside your existing tables. It's all `if not exists` / `add column if not exists`, so it's safe to run even if some of it already exists.
 
 ### Step 4 · Get your API keys
 1. Go to Settings → API in the left sidebar

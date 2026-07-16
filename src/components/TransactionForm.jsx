@@ -12,10 +12,13 @@ const CAT_ICON = {
   'Medical':'💊','Fuel':'⛽','Other':'📌',
 };
 
+const splitEq = (a, b) => Math.abs(a - b) < 0.01;
+
 export default function TransactionForm({ type, groupType, members, initial, onSave, onCancel }) {
   // 'collection' or 'expense'
   const isCollection = type === 'collection';
   const isFamily     = groupType === 'family';
+  const isSplitwise  = groupType === 'splitwise';
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -30,16 +33,34 @@ export default function TransactionForm({ type, groupType, members, initial, onS
   const [date,        setDate]        = useState(initial?.date || today);
   const [proofImage,  setProofImage]  = useState(initial?.proof_image || null);
   const [participants, setParticipants] = useState([]);
+  const [splitType,   setSplitType]   = useState('equal'); // 'equal' | 'unequal' | 'percentage'
+  const [shareInputs, setShareInputs] = useState({}); // member_id -> string (₹ amount or %)
   const [error,       setError]       = useState('');
   const fileRef = useRef();
 
   const cats = isFamily ? FAMILY_CATEGORIES : TRIP_CATEGORIES;
   useEffect(() => {
     if (!category && !initial) setCategory(cats[0]);
-    if (!isCollection && members.length) setParticipants(members.map(m => m.id));
+    if (!isCollection && members.length) {
+      if (isSplitwise && initial?.splits?.length) {
+        setParticipants(initial.splits.map(s => s.member_id));
+        const equal = splitEq(initial.amount / initial.splits.length, initial.splits[0].share)
+          && initial.splits.every(s => splitEq(s.share, initial.amount / initial.splits.length));
+        setSplitType(equal ? 'equal' : 'unequal');
+        const inputs = {};
+        initial.splits.forEach(s => { inputs[s.member_id] = String(s.share); });
+        setShareInputs(inputs);
+      } else {
+        setParticipants(members.map(m => m.id));
+      }
+    }
   }, []);
 
   const togglePart = (id) => setParticipants(p => p.includes(id) ? p.filter(x=>x!==id) : [...p, id]);
+  const changeSplitType = (t) => { setSplitType(t); setShareInputs({}); };
+  const setShare = (id, v) => setShareInputs(s => ({ ...s, [id]: v }));
+
+  const shareTotal = participants.reduce((s, id) => s + (parseFloat(shareInputs[id]) || 0), 0);
 
   const handleProof = (e) => {
     const file = e.target.files?.[0];
@@ -55,8 +76,24 @@ export default function TransactionForm({ type, groupType, members, initial, onS
     const cat = showCustom ? customCat.trim() : category;
     if (!isCollection && !cat) { setError('Select a category'); return; }
 
+    const amt = parseFloat(amount);
+    let splits;
+    if (!isCollection && isSplitwise) {
+      if (!participants.length) { setError('Select at least one person to split with'); return; }
+      if (splitType === 'equal') {
+        const per = amt / participants.length;
+        splits = participants.map(id => ({ member_id: id, share: per }));
+      } else if (splitType === 'unequal') {
+        if (!splitEq(shareTotal, amt)) { setError(`Amounts must add up to ₹${amt.toLocaleString('en-IN')} (currently ₹${shareTotal.toLocaleString('en-IN')})`); return; }
+        splits = participants.map(id => ({ member_id: id, share: parseFloat(shareInputs[id]) || 0 }));
+      } else {
+        if (!splitEq(shareTotal, 100)) { setError(`Percentages must add up to 100% (currently ${shareTotal.toFixed(1)}%)`); return; }
+        splits = participants.map(id => ({ member_id: id, share: amt * (parseFloat(shareInputs[id]) || 0) / 100 }));
+      }
+    }
+
     onSave({
-      amount: parseFloat(amount),
+      amount: amt,
       member_name:  isCollection ? memberName.trim() : undefined,
       paid_by:      !isCollection ? paidBy : undefined,
       category:     !isCollection ? cat : undefined,
@@ -65,6 +102,7 @@ export default function TransactionForm({ type, groupType, members, initial, onS
       date,
       proof_image:  proofImage,
       participant_ids: !isCollection && !isFamily ? participants : undefined,
+      splits,
     });
   };
 
@@ -125,7 +163,7 @@ export default function TransactionForm({ type, groupType, members, initial, onS
         <>
           <div className="input-group">
             <div className="input-label">Paid By</div>
-            <select className="input" value={paidBy} onChange={e => setPaidBy(parseInt(e.target.value))}>
+            <select className="input" value={paidBy} onChange={e => setPaidBy(e.target.value)}>
               {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </div>
@@ -135,16 +173,39 @@ export default function TransactionForm({ type, groupType, members, initial, onS
               <button className="btn btn-secondary btn-sm" onClick={() => setParticipants(members.map(m=>m.id))}>All</button>
               <button className="btn btn-secondary btn-sm" onClick={() => setParticipants([])}>None</button>
             </div>
+            {isSplitwise && (
+              <div className="filter-row" style={{ marginBottom: 8 }}>
+                {[['equal','Equal'],['unequal','Unequal (₹)'],['percentage','Percentage (%)']].map(([val,label]) => (
+                  <button key={val} className={`filter-chip ${splitType===val?'active':''}`} onClick={() => changeSplitType(val)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             {members.map(m => (
               <div key={m.id} className={`member-item ${participants.includes(m.id)?'selected':''}`}
                 onClick={() => togglePart(m.id)} style={{ marginBottom:6 }}>
                 <div className="avatar avatar-sm">{m.name[0].toUpperCase()}</div>
                 <div style={{ flex:1, fontSize:14, fontWeight:500 }}>{m.name}</div>
+                {isSplitwise && splitType !== 'equal' && participants.includes(m.id) && (
+                  <input className="input" type="number" placeholder={splitType==='unequal' ? '₹0' : '0%'}
+                    value={shareInputs[m.id] || ''}
+                    onClick={e => e.stopPropagation()}
+                    onChange={e => setShare(m.id, e.target.value)}
+                    style={{ width:78, padding:'6px 8px', fontSize:13, marginRight:8 }} />
+                )}
                 <div className={`check-ring ${participants.includes(m.id)?'on':''}`}>
                   {participants.includes(m.id) && <span style={{ fontSize:12 }}>✓</span>}
                 </div>
               </div>
             ))}
+            {isSplitwise && splitType !== 'equal' && participants.length > 0 && (
+              <div style={{ fontSize:12, marginTop:4, color: splitEq(shareTotal, splitType==='unequal' ? (parseFloat(amount)||0) : 100) ? 'var(--green)' : 'var(--text3)' }}>
+                {splitType === 'unequal'
+                  ? `Entered ₹${shareTotal.toLocaleString('en-IN')} of ₹${(parseFloat(amount)||0).toLocaleString('en-IN')}`
+                  : `Entered ${shareTotal.toFixed(1)}% of 100%`}
+              </div>
+            )}
           </div>
         </>
       )}

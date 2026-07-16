@@ -261,7 +261,7 @@ export default function AuthScreen() {
                     <div style={{ fontSize:11, color:'var(--accent)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>
                       Your User ID (save this!)
                     </div>
-                    <div style={{ fontFamily:'monospace', fontSize:18, fontWeight:800, color:'var(--text)', letterSpacing:'0.04em' }}>
+                    <div style={{ fontFamily:'monospace', fontSize:18, fontWeight:700, color:'var(--text)', letterSpacing:'0.04em' }}>
                       {generatedUserId}
                     </div>
                     <div style={{ fontSize:11, color:'var(--text3)', marginTop:5 }}>

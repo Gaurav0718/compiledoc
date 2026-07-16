@@ -93,7 +93,7 @@ export default function PublicDashboard({ navigate, groupId }) {
             </div>
             <div style={{ textAlign:'right' }}>
               <div className="tally-title">Coverage</div>
-              <div style={{ fontWeight:800, fontSize:22, color: collectPct>=100?'var(--green)':'var(--red)', marginTop:5, letterSpacing:'-0.03em' }}>
+              <div style={{ fontWeight:700, fontSize:22, color: collectPct>=100?'var(--green)':'var(--red)', marginTop:5, letterSpacing:'-0.03em' }}>
                 {Math.round(collectPct)}%
               </div>
             </div>
@@ -125,7 +125,7 @@ export default function PublicDashboard({ navigate, groupId }) {
           ].map(s => (
             <div key={s.label} className="card" style={{ textAlign:'center', padding:'14px 8px' }}>
               <div style={{ fontSize:22, marginBottom:4 }}>{s.icon}</div>
-              <div style={{ fontWeight:800, fontSize:20, color:s.color, letterSpacing:'-0.03em' }}>{s.value}</div>
+              <div style={{ fontWeight:700, fontSize:20, color:s.color, letterSpacing:'-0.03em' }}>{s.value}</div>
               <div style={{ fontSize:11, color:'var(--text3)', marginTop:2 }}>{s.label}</div>
             </div>
           ))}

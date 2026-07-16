@@ -20,7 +20,7 @@ function fmtPDF(d) {
   return `${dd} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
 }
 
-export function exportXLSX(groupName, collections, expenses, tally, members) {
+export function exportXLSX(groupName, collections, expenses, tally, members, settlements) {
   const wb = XLSX.utils.book_new();
   const summaryData = [
     ['CompileDoc – Financial Report'],
@@ -58,10 +58,21 @@ export function exportXLSX(groupName, collections, expenses, tally, members) {
     const mData = [['#','Name','Role'], ...members.map((m,i)=>[i+1,m.name,m.role])];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mData), 'Members');
   }
+
+  if (settlements?.length) {
+    const nameOf = (id) => members?.find(m=>m.id===id)?.name || id;
+    const setData = [
+      ['#','From','To','Amount (₹)','Notes','Date'],
+      ...settlements.map((s,i) => [i+1, nameOf(s.from_member), nameOf(s.to_member), s.amount, s.notes||'', fmtXLSX(s.date)]),
+    ];
+    const ws4 = XLSX.utils.aoa_to_sheet(setData);
+    ws4['!cols'] = [{ wch:5 },{ wch:20 },{ wch:20 },{ wch:15 },{ wch:30 },{ wch:14 }];
+    XLSX.utils.book_append_sheet(wb, ws4, 'Settlements');
+  }
   XLSX.writeFile(wb, `${groupName.replace(/\s+/g,'_')}_CompileDoc.xlsx`);
 }
 
-export function exportPDF(groupName, collections, expenses, tally) {
+export function exportPDF(groupName, collections, expenses, tally, members, settlements) {
   const fmt = (n) => `Rs. ${Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   const date = fmtPDF(new Date().toISOString().split('T')[0]) + ' ' + new Date().toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
   const win = window.open('', '_blank');
@@ -100,6 +111,13 @@ export function exportPDF(groupName, collections, expenses, tally) {
     <table><tr><th>#</th><th>Category</th><th>Payment</th><th>Description</th><th class="amount">Amount</th><th>Date</th></tr>
     ${expenses.map((e,i)=>`<tr><td>${i+1}</td><td>${e.category}</td><td>${e.payment_mode||'Cash'}</td><td>${e.notes||'—'}</td><td class="amount">${fmt(e.amount)}</td><td style="white-space:nowrap">${fmtPDF(e.date)}</td></tr>`).join('')}
     <tr class="total-row"><td colspan="3">TOTAL</td><td class="amount" colspan="2">${fmt(tally.totalExpenses)}</td><td></td></tr></table>
+    ${settlements?.length ? (() => {
+      const nameOf = (id) => members?.find(m=>m.id===id)?.name || id;
+      return `<h2>Settlements (${settlements.length} entries)</h2>
+      <table><tr><th>#</th><th>From</th><th>To</th><th>Notes</th><th class="amount">Amount</th><th>Date</th></tr>
+      ${settlements.map((s,i)=>`<tr><td>${i+1}</td><td>${nameOf(s.from_member)}</td><td>${nameOf(s.to_member)}</td><td>${s.notes||'—'}</td><td class="amount">${fmt(s.amount)}</td><td style="white-space:nowrap">${fmtPDF(s.date)}</td></tr>`).join('')}
+      </table>`;
+    })() : ''}
     <script>window.onload=()=>window.print()<\/script></body></html>`);
   win.document.close();
 }
