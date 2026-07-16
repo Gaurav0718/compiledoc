@@ -249,7 +249,7 @@ export default function TransactionForm({ type, groupType, members, initial, onS
               <div style={{ fontSize:13, color:'var(--green)', fontWeight:600 }}>✓ Proof attached</div>
               <div style={{ fontSize:11, color:'var(--text3)' }}>Tap image to view full size</div>
             </div>
-            <button onClick={() => setProofImage(null)} style={{ background:'none',border:'none',color:'var(--red)',cursor:'pointer',padding:4,borderRadius:8,display:'flex',alignItems:'center' }}>
+            <button onClick={() => setProofImage(null)} style={{ background:'none',border:'none',color:'var(--red)',cursor:'pointer',padding:4,borderRadius:0,display:'flex',alignItems:'center' }}>
               <X size={16} />
             </button>
           </div>
@@ -263,7 +263,7 @@ export default function TransactionForm({ type, groupType, members, initial, onS
       </div>
 
       {error && (
-        <div style={{ fontSize:13, color:'var(--red)', textAlign:'center', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:10, padding:'9px 14px' }}>
+        <div style={{ fontSize:13, color:'var(--red)', textAlign:'center', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:0, padding:'9px 14px' }}>
           {error}
         </div>
       )}

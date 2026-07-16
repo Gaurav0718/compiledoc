@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getGroupData, addExpense, updateExpense, deleteExpense, addSettlement, deleteSettlement, closeGroup, checkIsAdmin } from '../db/database';
 import { calculateSplitwiseBalances, calculateSettlements } from '../logic/calculations';
 import { exportXLSX, exportPDF } from '../logic/export';
-import { Header, ThemeToggle, fmt, fmtDate, PaymentBadge, EmptyState } from '../components/ui';
+import { Header, fmt, fmtDate, PaymentBadge, EmptyState } from '../components/ui';
 import TransactionForm from '../components/TransactionForm';
 import { useAuth } from '../hooks/useAuth';
 import { sounds } from '../logic/sounds';
@@ -37,7 +37,7 @@ function SettleForm({ from, to, suggested, onSave, onCancel }) {
         <div className="input-label">Notes (optional)</div>
         <input className="input" placeholder="e.g. Paid via GPay" value={notes} onChange={e => setNotes(e.target.value)} />
       </div>
-      {error && <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:10, padding:'9px 14px', textAlign:'center' }}>{error}</div>}
+      {error && <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:0, padding:'9px 14px', textAlign:'center' }}>{error}</div>}
       <button className="btn btn-primary" onClick={() => {
         if (!amount || parseFloat(amount) <= 0) { setError('Enter a valid amount'); return; }
         onSave({ amount: parseFloat(amount), notes, date });
@@ -117,14 +117,11 @@ export default function SplitwiseDashboard({ navigate, groupId }) {
       <Header title={group?.name} subtitle={`${members.length} members · ${expenses.length} expenses`}
         onBack={() => navigate('home')}
         right={
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            <ThemeToggle />
-            {isAdmin && (
-              <button className="icon-btn glow-v" onClick={() => navigate('adminPanel', { groupId })}>
-                <Settings size={15} />
-              </button>
-            )}
-          </div>
+          isAdmin && (
+            <button className="icon-btn glow-v" onClick={() => navigate('adminPanel', { groupId })}>
+              <Settings size={15} />
+            </button>
+          )
         }
       />
       <div className="content">
@@ -190,9 +187,7 @@ export default function SplitwiseDashboard({ navigate, groupId }) {
         )}
 
         {canEdit && (
-          <div className="btn-row">
-            <button className="btn btn-action" onClick={() => setSheet('new')}><Plus size={16}/> Add Expense</button>
-          </div>
+          <button className="btn btn-action" onClick={() => setSheet('new')}><Plus size={16}/> Add Expense</button>
         )}
         <div className="btn-row-3">
           <button className="btn btn-action" onClick={() => exportXLSX(group.name, [], expenses, { totalCollected:0, totalExpenses:totalSpent, balance:0 }, members, settlements)}><Download size={14}/> Excel</button>

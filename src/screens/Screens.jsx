@@ -43,7 +43,7 @@ function EntryCard({ e, isCollection, isAdmin, onEdit, onDelete, memberMap }) {
       {showProof && e.proof_image && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.9)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
           onClick={() => setShowProof(false)}>
-          <img src={e.proof_image} alt="proof" style={{ maxWidth:'100%', maxHeight:'90dvh', borderRadius:12, objectFit:'contain' }} />
+          <img src={e.proof_image} alt="proof" style={{ maxWidth:'100%', maxHeight:'90dvh', borderRadius:0, objectFit:'contain' }} />
         </div>
       )}
     </div>
@@ -293,9 +293,9 @@ export function SettlementScreen({ navigate, groupId }) {
             <div style={{ color:'var(--text2)', fontSize:14, marginTop:6 }}>Everyone is even.</div>
           </div>
         ) : settlements.map((s,i)=>(
-          <div key={i} style={{ display:'flex', alignItems:'center', gap:12, background:'var(--surface)', border:`1px solid ${settled.includes(i)?'var(--green)':'var(--border)'}`, borderRadius:14, padding:'14px 16px', cursor:'pointer', opacity:settled.includes(i)?.55:1, transition:'all .2s' }}
+          <div key={i} style={{ display:'flex', alignItems:'center', gap:12, background:'var(--surface)', border:`1px solid ${settled.includes(i)?'var(--green)':'var(--border)'}`, borderRadius:0, padding:'14px 16px', cursor:'pointer', opacity:settled.includes(i)?.55:1, transition:'all .2s' }}
             onClick={()=>{toggle(i);sounds.tap();}}>
-            <div style={{ width:34,height:34,borderRadius:10,background:settled.includes(i)?'var(--green-bg)':'var(--surface2)',border:`2px solid ${settled.includes(i)?'var(--green)':'var(--border2)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,transition:'all .2s' }}>
+            <div style={{ width:34,height:34,borderRadius:0,background:settled.includes(i)?'var(--green-bg)':'var(--surface2)',border:`2px solid ${settled.includes(i)?'var(--green)':'var(--border2)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,transition:'all .2s' }}>
               {settled.includes(i)?'✓':'○'}
             </div>
             <div style={{ flex:1 }}>

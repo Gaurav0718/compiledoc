@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getVisibleGroups, getSetting } from '../db/database';
-import { ThemeToggle, fmt, dashRoute } from '../components/ui';
+import { ThemeToggle, TypeIcon, fmt, dashRoute } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { ChevronRight, Calculator } from 'lucide-react';
 
 const TYPE_META = {
-  family:    { icon: '🏠', label: 'Family Get-together', chip: 'family' },
-  trip:      { icon: '✈️', label: 'Trip Expense Audit',  chip: 'trip' },
-  splitwise: { icon: '💸', label: 'Split Expenses',      chip: 'splitwise' },
+  family:    { label: 'Family Get-together', chip: 'family' },
+  trip:      { label: 'Trip Expense Audit',  chip: 'trip' },
+  splitwise: { label: 'Split Expenses',      chip: 'splitwise' },
 };
 
 export default function HomeScreen({ navigate }) {
@@ -59,17 +59,17 @@ export default function HomeScreen({ navigate }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="mode-card type-family" onClick={() => navigate('create', { type: 'family' })}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="type-chip family">🏠</div>
+              <div className="type-chip family"><TypeIcon type="family" /></div>
               <div style={{ flex: 1 }}>
                 <div className="mode-card-title">Family Get-together</div>
                 <div className="mode-card-desc">Pool contributions, track event expenses, tally live. No equal split.</div>
               </div>
-              <div style={{ color: 'var(--blue)', opacity: 0.6 }}><ChevronRight size={18} /></div>
+              <div style={{ color: 'var(--accent2)', opacity: 0.6 }}><ChevronRight size={18} /></div>
             </div>
           </div>
           <div className="mode-card type-trip" onClick={() => navigate('create', { type: 'trip' })}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="type-chip trip">✈️</div>
+              <div className="type-chip trip"><TypeIcon type="trip" /></div>
               <div style={{ flex: 1 }}>
                 <div className="mode-card-title">Trip Expense Audit</div>
                 <div className="mode-card-desc">Log expenses, split fairly, settle debts with min transactions.</div>
@@ -79,12 +79,12 @@ export default function HomeScreen({ navigate }) {
           </div>
           <div className="mode-card type-splitwise" onClick={() => navigate('create', { type: 'splitwise' })}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="type-chip splitwise">💸</div>
+              <div className="type-chip splitwise"><TypeIcon type="splitwise" /></div>
               <div style={{ flex: 1 }}>
                 <div className="mode-card-title">Split Expenses</div>
                 <div className="mode-card-desc">Splitwise-style group expenses — who owes whom, settle up, close out.</div>
               </div>
-              <div style={{ color: 'var(--accent)', opacity: 0.6 }}><ChevronRight size={18} /></div>
+              <div style={{ color: 'var(--accent2)', opacity: 0.6 }}><ChevronRight size={18} /></div>
             </div>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function HomeScreen({ navigate }) {
                 <div key={g.id} className="card-sm"
                   style={{ display:'flex', alignItems:'center', gap:12, background:'var(--surface)', border:'1px solid var(--border)' }}>
                   <div className={`type-chip type-chip-sm ${meta.chip}`}>
-                    {meta.icon}
+                    <TypeIcon type={g.type} />
                   </div>
                   <div style={{ flex:1, minWidth:0, cursor:'pointer' }}
                     onClick={() => navigate(dashRoute(g.type), { groupId: g.id })}>

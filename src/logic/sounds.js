@@ -1,4 +1,7 @@
 let ctx = null;
+let noiseBuf = null; // generated once and reused — regenerating this per-click was
+                      // real synchronous main-thread work on every single tap, which
+                      // is exactly what showed up as input lag on slower mobile CPUs.
 
 function getCtx() {
   if (!ctx) {
@@ -6,6 +9,17 @@ function getCtx() {
   }
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
+}
+
+function getNoiseBuf(c) {
+  if (!noiseBuf) {
+    noiseBuf = c.createBuffer(1, Math.floor(c.sampleRate * 0.018), c.sampleRate);
+    const data = noiseBuf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 3);
+    }
+  }
+  return noiseBuf;
 }
 
 // MacBook-style click — soft, dampened, tactile feel
@@ -37,14 +51,9 @@ function macClick(vol = 0.22) {
     osc2.connect(g2); g2.connect(c.destination);
     osc2.start(t); osc2.stop(t + 0.015);
 
-    // Light noise layer — adds texture without harshness
-    const buf  = c.createBuffer(1, Math.floor(c.sampleRate * 0.018), c.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 3);
-    }
+    // Light noise layer — adds texture without harshness (buffer reused, not rebuilt)
     const src = c.createBufferSource();
-    src.buffer = buf;
+    src.buffer = getNoiseBuf(c);
     // Low-pass to remove high-frequency harshness
     const lpf = c.createBiquadFilter();
     lpf.type = 'lowpass';
@@ -106,10 +115,12 @@ export function playSplashMusic() {
   }, notes.length * 190 + 40);
 }
 
+// Unlocks the AudioContext on the first user gesture (mobile browsers suspend
+// it until then). Actual click sounds are triggered explicitly by each
+// screen via sounds.tap()/nav()/pop()/etc — a second, app-wide listener here
+// used to fire macClick() again for the same click, silently doubling audio
+// work (and the resulting main-thread jank) on every button press.
 export function initSounds() {
-  document.addEventListener('click', (e) => {
-    const el = e.target.closest('button, [data-sound], .filter-chip, .mode-card, .cat-btn, .member-item');
-    if (el) macClick(0.22);
-  }, { passive: true });
+  document.addEventListener('click', () => { getCtx(); }, { passive: true, once: true });
 }
 

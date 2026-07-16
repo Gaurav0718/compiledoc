@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getVisibleGroups, resetPin, getSecurityQuestion, setSetting, getSetting, changeUserId } from '../db/database';
-import { Header, fmt, dashRoute } from '../components/ui';
+import { Header, TypeIcon, fmt, dashRoute } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { sounds } from '../logic/sounds';
 import { Delete, Camera, ChevronRight, Shield, LogOut, Users } from 'lucide-react';
@@ -16,11 +16,11 @@ const SECURITY_QUESTIONS = [
 function PinPad({ value, onChange, onComplete, loading }) {
   const handleKey = (k) => {
     if (loading) return;
-    sounds.tap();
-    if (k === 'del') { onChange(value.slice(0, -1)); return; }
+    if (k === 'del') { onChange(value.slice(0, -1)); setTimeout(sounds.tap, 0); return; }
     if (value.length >= 4) return;
     const next = value + k;
     onChange(next);
+    setTimeout(sounds.tap, 0); // deferred so the PIN-dot paint isn't blocked by audio synthesis
     if (next.length === 4) setTimeout(() => onComplete?.(next), 120);
   };
   return (
@@ -149,16 +149,14 @@ export default function ProfileScreen({ navigate }) {
   const username    = user.username || user.user_id || uid;
 
   const TYPE_META = {
-    family:    { icon: '🏠', label: 'Family Get-together', chip: 'family' },
-    trip:      { icon: '✈️', label: 'Trip Expense Audit',  chip: 'trip' },
-    splitwise: { icon: '💸', label: 'Split Expenses',      chip: 'splitwise' },
+    family:    { label: 'Family Get-together', chip: 'family' },
+    trip:      { label: 'Trip Expense Audit',  chip: 'trip' },
+    splitwise: { label: 'Split Expenses',      chip: 'splitwise' },
   };
 
   return (
     <div className="screen">
-      <Header title="Profile" onBack={() => navigate('home')}
-        right={<ThemeToggle/>}
-      />
+      <Header title="Profile" onBack={() => navigate('home')} />
       <div className="content">
 
         {/* ── AVATAR + NAME ── */}
@@ -201,7 +199,7 @@ export default function ProfileScreen({ navigate }) {
           ].map((item, i, arr) => (
             <button key={i} onClick={item.action}
               style={{ width:'100%', display:'flex', alignItems:'center', gap:14, padding:'14px 18px', background:'none', border:'none', cursor:'pointer', textAlign:'left', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
-              <div style={{ width:36, height:36, borderRadius:6, background:'var(--surface2)', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <div style={{ width:36, height:36, borderRadius:0, background:'var(--surface2)', border:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                 {item.icon}
               </div>
               <div style={{ flex:1 }}>
@@ -227,7 +225,7 @@ export default function ProfileScreen({ navigate }) {
               style={{ display:'flex', alignItems:'center', gap:12, cursor:'pointer', width:'100%', textAlign:'left' }}
               onClick={() => navigate(dashRoute(g.type), { groupId: g.id })}>
               <div className={`type-chip type-chip-xs ${meta.chip}`}>
-                {meta.icon}
+                <TypeIcon type={g.type} />
               </div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontWeight:700, fontSize:14, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'var(--text)' }}>
@@ -306,7 +304,7 @@ export default function ProfileScreen({ navigate }) {
                   <input className="input" placeholder="Case-insensitive" value={secAnswer}
                     onChange={e => { setSecAnswer(e.target.value); setPinError(''); }} autoFocus/>
                 </div>
-                {pinError && <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:10, padding:'9px 14px', textAlign:'center' }}>{pinError}</div>}
+                {pinError && <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:0, padding:'9px 14px', textAlign:'center' }}>{pinError}</div>}
                 <button className="btn btn-primary" disabled={!secAnswer.trim()} onClick={handleVerify}>Continue →</button>
                 <button className="btn btn-ghost btn-sm" style={{ margin:'0 auto', width:'auto' }} onClick={() => setSheet(null)}>Cancel</button>
               </div>
@@ -321,7 +319,7 @@ export default function ProfileScreen({ navigate }) {
                   loading={pinLoading}
                   onComplete={pinStep === 'new' ? handleNewPin : handleConfirmPin}
                 />
-                {pinError && <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:10, padding:'9px 14px', textAlign:'center', width:'100%' }}>{pinError}</div>}
+                {pinError && <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:0, padding:'9px 14px', textAlign:'center', width:'100%' }}>{pinError}</div>}
                 <button className="btn btn-ghost btn-sm" style={{ margin:'0 auto', width:'auto' }}
                   onClick={() => { setSheet(null); setNewPin(''); setConfirmPin(''); setPinStep('verify'); }}>
                   Cancel
@@ -347,7 +345,7 @@ export default function ProfileScreen({ navigate }) {
               </div>
             ) : idPinStep === 'form' ? (
               <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-                <div style={{ fontSize:13, color:'var(--text2)', background:'var(--blue-bg)', border:'1px solid var(--blue)', borderRadius:10, padding:'10px 14px', lineHeight:1.5 }}>
+                <div style={{ fontSize:13, color:'var(--text2)', background:'var(--blue-bg)', border:'1px solid var(--blue)', borderRadius:0, padding:'10px 14px', lineHeight:1.5 }}>
                   <strong style={{ color:'var(--blue)' }}>ℹ️ Important</strong><br/>
                   This updates your login ID everywhere across all your groups.
                 </div>
@@ -362,7 +360,7 @@ export default function ProfileScreen({ navigate }) {
                     </div>
                   )}
                 </div>
-                {idError && <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:10, padding:'9px 14px' }}>{idError}</div>}
+                {idError && <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:0, padding:'9px 14px' }}>{idError}</div>}
                 <button className="btn btn-primary" disabled={newUserId.length < 4}
                   onClick={() => { setIdPinStep('pin'); setIdError(''); }}>
                   Continue → Verify with PIN
@@ -387,7 +385,7 @@ export default function ProfileScreen({ navigate }) {
                     } finally { setPinLoading(false); }
                   }}
                 />
-                {idError && <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:10, padding:'9px 14px', width:'100%', textAlign:'center' }}>{idError}</div>}
+                {idError && <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:0, padding:'9px 14px', width:'100%', textAlign:'center' }}>{idError}</div>}
                 <button className="btn btn-ghost btn-sm" style={{ margin:'0 auto', width:'auto' }}
                   onClick={() => { setIdPinStep('form'); setIdVerifyPin(''); setIdError(''); }}>← Back</button>
               </div>

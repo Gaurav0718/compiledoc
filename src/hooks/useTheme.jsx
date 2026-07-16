@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getSetting, setSetting } from '../db/database';
 
-const ThemeCtx = createContext({ theme: 'dark', toggle: () => {} });
+const ThemeCtx = createContext({ theme: 'light', toggle: () => {} });
 
 export function ThemeProvider({ children, uid }) {
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
     const apply = (t) => {
@@ -12,12 +12,12 @@ export function ThemeProvider({ children, uid }) {
       document.documentElement.setAttribute('data-theme', t);
     };
     if (uid) {
-      getSetting(uid, 'theme', 'dark').then(apply);
+      getSetting(uid, 'theme', 'light').then(apply);
     } else {
       try {
-        const t = localStorage.getItem('cd_theme') || 'dark';
+        const t = localStorage.getItem('cd_theme') || 'light';
         apply(t);
-      } catch { apply('dark'); }
+      } catch { apply('light'); }
     }
   }, [uid]);
 

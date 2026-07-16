@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getGroupData, addExpense, addCollection, updateExpense, deleteExpense, checkIsAdmin } from '../db/database';
 import { calculateBalances, getCategoryTotals } from '../logic/calculations';
 import { exportXLSX, exportPDF } from '../logic/export';
-import { Header, ThemeToggle, fmt, fmtDate, PaymentBadge, EmptyState } from '../components/ui';
+import { Header, fmt, fmtDate, PaymentBadge, EmptyState } from '../components/ui';
 import TransactionForm from '../components/TransactionForm';
 import { useAuth } from '../hooks/useAuth';
 import { sounds } from '../logic/sounds';
@@ -52,14 +52,11 @@ export default function TripDashboard({ navigate, groupId }) {
       <Header title={group?.name} subtitle={`${members.length} members · ${expenses.length} expenses`}
         onBack={() => navigate('home')}
         right={
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            <ThemeToggle />
-            {isAdmin && (
-              <button className="icon-btn glow-v" onClick={() => navigate('adminPanel', { groupId })}>
-                <Settings size={15} />
-              </button>
-            )}
-          </div>
+          isAdmin && (
+            <button className="icon-btn glow-v" onClick={() => navigate('adminPanel', { groupId })}>
+              <Settings size={15} />
+            </button>
+          )
         }
       />
       <div className="content">
@@ -90,12 +87,14 @@ export default function TripDashboard({ navigate, groupId }) {
 
         {isAdmin ? (
           <>
-            <div className="btn-row">
-              <button className="btn btn-action" onClick={() => setSheet('new')}><Plus size={16}/> Add Expense</button>
-              {group?.mode==='audit' && (
+            {group?.mode==='audit' ? (
+              <div className="btn-row">
+                <button className="btn btn-action" onClick={() => setSheet('new')}><Plus size={16}/> Add Expense</button>
                 <button className="btn btn-action" onClick={() => setSheet('col')}><Plus size={16}/> Collection</button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <button className="btn btn-action" onClick={() => setSheet('new')}><Plus size={16}/> Add Expense</button>
+            )}
             <div className="btn-row">
               <button className="btn btn-action" onClick={() => exportXLSX(group.name,data.collections,expenses,tally,members)}><Download size={14}/> Excel</button>
               <button className="btn btn-action" onClick={() => exportPDF(group.name,data.collections,expenses,tally)}><FileText size={14}/> PDF</button>

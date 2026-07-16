@@ -251,10 +251,13 @@ export async function updateGroupName(group_id, name, by) {
 }
 
 // ─── MEMBERS ──────────────────────────────────────────────────────────────────
-export async function addMember(group_id, uid, name, role = 'member', by = '') {
-  const participant_id = generateParticipantId(name);
+// Pass an existing `participant_id` to reuse a known person's identity (so the
+// same login can access every group they're added to) instead of minting a
+// brand new one for a name that already exists elsewhere.
+export async function addMember(group_id, uid, name, role = 'member', by = '', participant_id = null) {
+  const pid = participant_id || generateParticipantId(name);
   const member_id = newId();
-  const rec = { member_id, group_id, name, role, participant_id, created_at: new Date().toISOString() };
+  const rec = { member_id, group_id, name, role, participant_id: pid, created_at: new Date().toISOString() };
   if (online()) {
     const { error } = await sb(s => s.from('members').insert(rec));
     if (error) throw new Error(error.message);
@@ -263,8 +266,36 @@ export async function addMember(group_id, uid, name, role = 'member', by = '') {
   }
   await cache.members.put(rec);
   await _log(group_id, uid, 'add', 'member', by || name,
-      `Added "${name}" (${participant_id}) as ${role}`);
-  return { id: member_id, participant_id };
+      `Added "${name}" (${pid}) as ${role}`);
+  return { id: member_id, participant_id: pid };
+}
+
+// Every distinct person (by participant_id) the current user has ever added
+// to any of their groups — used to power "existing member" autocomplete so
+// admins can reuse a known person instead of minting a fresh profile each time.
+export async function getKnownMembers(user) {
+  const groups = await getVisibleGroups(user);
+  const groupIds = groups.map(g => g.id);
+  if (!groupIds.length) return [];
+
+  let rows = [];
+  if (online()) {
+    const { data } = await sb(s => s.from('members').select('name,participant_id').in('group_id', groupIds));
+    if (data) rows = data;
+  }
+  if (!rows.length) {
+    rows = await cache.members.where('group_id').anyOf(groupIds).toArray();
+  }
+
+  const uid = (user.user_id || user.uid || user.username || '').toLowerCase().trim();
+  const seen = new Map();
+  for (const m of rows) {
+    if (!m.participant_id || m.participant_id.toLowerCase() === uid) continue; // skip self
+    seen.set(m.participant_id, m.name); // last-seen name wins if it ever changed
+  }
+  return [...seen.entries()]
+    .map(([participant_id, name]) => ({ participant_id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function removeMember(member_id, group_id, uid, by) {

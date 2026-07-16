@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { registerUser, loginUser, setupParticipantAccount, participantHasAccount, getSecurityQuestion, resetPin, generateUserId } from '../db/database';
 import { useAuth } from '../hooks/useAuth';
 import { sounds } from '../logic/sounds';
+import { ThemeToggle } from '../components/ui';
 import { Delete } from 'lucide-react';
 
 const SECURITY_QUESTIONS = [
@@ -15,11 +16,11 @@ const SECURITY_QUESTIONS = [
 function PinPad({ value, onChange, onComplete, loading }) {
   const handleKey = (k) => {
     if (loading) return;
-    sounds.tap();
-    if (k === 'del') { onChange(value.slice(0, -1)); return; }
+    if (k === 'del') { onChange(value.slice(0, -1)); setTimeout(sounds.tap, 0); return; }
     if (value.length >= 4) return;
     const next = value + k;
     onChange(next);
+    setTimeout(sounds.tap, 0); // deferred so the PIN-dot paint isn't blocked by audio synthesis
     if (next.length === 4) setTimeout(() => onComplete?.(next), 120);
   };
   return (
@@ -176,14 +177,15 @@ export default function AuthScreen() {
   };
 
   const Err = () => error ? (
-    <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:10, padding:'9px 14px', textAlign:'center' }}>
+    <div style={{ fontSize:13, color:'var(--red)', background:'var(--red-bg)', border:'1px solid var(--red)', borderRadius:0, padding:'9px 14px', textAlign:'center' }}>
       {error}
     </div>
   ) : null;
 
   return (
     <div className="auth-screen">
-      <div className="auth-logo">📋</div>
+      <div style={{ position:'absolute', top:16, right:16 }}><ThemeToggle /></div>
+      <div className="auth-logo">💠</div>
       <div className="auth-title">CompileDoc</div>
 
       {/* ══════════ LOGIN ══════════ */}
@@ -257,7 +259,7 @@ export default function AuthScreen() {
                     onChange={e => { setMobile(e.target.value.replace(/\D/g,'').slice(0,10)); setError(''); }} />
                 </div>
                 {generatedUserId && (
-                  <div style={{ background:'var(--accent-bg)', border:'1px solid var(--accent)', borderRadius:12, padding:'12px 14px' }}>
+                  <div style={{ background:'var(--accent-bg)', border:'1px solid var(--accent)', borderRadius:0, padding:'12px 14px' }}>
                     <div style={{ fontSize:11, color:'var(--accent)', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:6 }}>
                       Your User ID (save this!)
                     </div>
@@ -385,7 +387,7 @@ export default function AuthScreen() {
                 <div className="card" style={{ background:'var(--blue-bg)', borderColor:'var(--blue)', fontSize:13, color:'var(--text2)', lineHeight:1.6 }}>
                   <strong style={{ color:'var(--blue)' }}>ℹ️ For new participants</strong><br />
                   An admin added you and gave you a <strong>Participant ID</strong> (e.g.{' '}
-                  <code style={{ background:'var(--surface3)', padding:'1px 5px', borderRadius:4, fontSize:12 }}>gaurav3231</code>).
+                  <code style={{ background:'var(--surface3)', padding:'1px 5px', borderRadius:0, fontSize:12 }}>gaurav3231</code>).
                   Enter it here to create your account.
                 </div>
                 <div className="input-group">

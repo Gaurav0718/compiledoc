@@ -61,11 +61,11 @@ export default function PublicDashboard({ navigate, groupId }) {
       </div>
 
       {/* Share card */}
-      <div style={{ margin:'0 16px 8px', padding:'14px 16px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16 }}>
+      <div style={{ margin:'0 16px 8px', padding:'14px 16px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:0 }}>
         <div style={{ fontSize:12, color:'var(--text3)', marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
           <Lock size={12}/> Read-only public view · <span style={{ color:'var(--accent)', cursor:'pointer', textDecoration:'underline' }} onClick={() => navigate('home')}>Sign in to edit</span>
         </div>
-        <div style={{ fontFamily:'monospace', fontSize:12, color:'var(--text2)', background:'var(--surface2)', borderRadius:8, padding:'8px 10px', marginBottom:10, wordBreak:'break-all', border:'1px solid var(--border)' }}>
+        <div style={{ fontFamily:'monospace', fontSize:12, color:'var(--text2)', background:'var(--surface2)', borderRadius:0, padding:'8px 10px', marginBottom:10, wordBreak:'break-all', border:'1px solid var(--border)' }}>
           {shareUrl}
         </div>
         <div style={{ display:'flex', gap:8 }}>
@@ -152,8 +152,8 @@ export default function PublicDashboard({ navigate, groupId }) {
                       </div>
                     </div>
                     {/* Mini bar */}
-                    <div style={{ height:3, background:'var(--surface3)', borderRadius:2, overflow:'hidden' }}>
-                      <div style={{ height:'100%', width:`${pct}%`, background:'var(--accent)', borderRadius:2, transition:'width .5s ease' }}/>
+                    <div style={{ height:3, background:'var(--surface3)', borderRadius:0, overflow:'hidden' }}>
+                      <div style={{ height:'100%', width:`${pct}%`, background:'var(--accent)', borderRadius:0, transition:'width .5s ease' }}/>
                     </div>
                   </div>
                 );

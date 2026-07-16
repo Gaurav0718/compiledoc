@@ -16,7 +16,7 @@ export default function SplashScreen({ onDone }) {
     <div className="splash">
       <div className="splash-logo-wrap">
         <div className="splash-ring" />
-        <div className="splash-icon">📋</div>
+        <div className="splash-icon">💠</div>
       </div>
       <div className="splash-name">CompileDoc</div>
       <div className="splash-tagline">Collect · Track · Tally</div>

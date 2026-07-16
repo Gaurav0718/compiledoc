@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getGroupData, addCollection, addExpense, updateCollection, updateExpense, deleteCollection, deleteExpense, checkIsAdmin } from '../db/database';
 import { getFamilyTally, getMismatches, getCategoryTotals } from '../logic/calculations';
 import { exportXLSX, exportPDF } from '../logic/export';
-import { Header, Alert, ThemeToggle, fmt, fmtDate, PaymentBadge, EmptyState } from '../components/ui';
+import { Header, Alert, fmt, fmtDate, PaymentBadge, EmptyState } from '../components/ui';
 import TransactionForm from '../components/TransactionForm';
 import { useAuth } from '../hooks/useAuth';
 import { sounds } from '../logic/sounds';
@@ -78,14 +78,11 @@ export default function FamilyDashboard({ navigate, groupId }) {
       <Header title={group?.name} subtitle={`${collections.length} collections · ${expenses.length} expenses`}
         onBack={() => navigate('home')}
         right={
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            <ThemeToggle />
-            {isAdmin && (
-              <button className="icon-btn glow-v" onClick={() => navigate('adminPanel', { groupId })} title="Admin Panel">
-                <Settings size={15} />
-              </button>
-            )}
-          </div>
+          isAdmin && (
+            <button className="icon-btn glow-v" onClick={() => navigate('adminPanel', { groupId })} title="Admin Panel">
+              <Settings size={15} />
+            </button>
+          )
         }
       />
 

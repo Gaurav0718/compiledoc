@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getGroupData, addMember, removeMember, updateMemberRole, updateGroupName, checkIsAdmin, deleteGroup, updateMemberName } from '../db/database';
-import { Header, dashRoute } from '../components/ui';
+import { getGroupData, addMember, removeMember, updateMemberRole, updateGroupName, checkIsAdmin, deleteGroup, updateMemberName, getKnownMembers } from '../db/database';
+import { Header, dashRoute, MemberAutocomplete } from '../components/ui';
 import { useAuth } from '../hooks/useAuth';
 import { sounds } from '../logic/sounds';
 import { Plus, Trash2, ShieldCheck, ShieldOff, Edit3, Copy, Check } from 'lucide-react';
@@ -9,6 +9,8 @@ export default function AdminPanelScreen({ navigate, groupId }) {
   const { user } = useAuth();
   const [data, setData]         = useState(null);
   const [newName, setNewName]   = useState('');
+  const [newParticipantId, setNewParticipantId] = useState(null);
+  const [knownMembers, setKnownMembers] = useState([]);
   const [newRole, setNewRole]   = useState('member');
   const [editingName, setEditingName] = useState(false);
   const [groupNameEdit, setGroupNameEdit] = useState('');
@@ -18,6 +20,7 @@ export default function AdminPanelScreen({ navigate, groupId }) {
   const [copied, setCopied]     = useState(false);
 
   useEffect(() => { load(); }, [groupId]);
+  useEffect(() => { if (user) getKnownMembers(user).then(setKnownMembers); }, [user]);
 
   const load = async () => {
     const d = await getGroupData(groupId);
@@ -42,11 +45,12 @@ export default function AdminPanelScreen({ navigate, groupId }) {
     const t = newName.trim();
     if (!t) return;
     if (data.members.find(m => m.name.toLowerCase() === t.toLowerCase())) { setError('Name already exists'); return; }
-    const result = await addMember(groupId, user.uid, t, newRole, user.displayName);
+    const result = await addMember(groupId, user.uid, t, newRole, user.displayName, newParticipantId);
     sounds.success();
-    setLastAdded({ name: t, participant_id: result.participant_id, role: newRole });
-    setNewName(''); setError('');
+    setLastAdded({ name: t, participant_id: result.participant_id, role: newRole, reused: !!newParticipantId });
+    setNewName(''); setNewParticipantId(null); setError('');
     load();
+    if (user) getKnownMembers(user).then(setKnownMembers);
   };
 
   const handleRemove = async (m) => {
@@ -83,7 +87,7 @@ export default function AdminPanelScreen({ navigate, groupId }) {
     <div className="screen">
       <Header title="Admin Panel" subtitle={data.group?.name}
         onBack={() => navigate(dashRoute(data?.group?.type), { groupId })}
-        right={<span style={{fontSize:11,color:'var(--accent)',fontWeight:600,background:'var(--accent-bg)',padding:'4px 10px',borderRadius:20,border:'1px solid var(--accent)'}}>🛡️ Admin</span>}
+        right={<span style={{fontSize:11,color:'var(--accent)',fontWeight:600,background:'var(--accent-bg)',padding:'4px 10px',borderRadius:0,border:'1px solid var(--accent)'}}>🛡️ Admin</span>}
       />
       <div className="content">
 
@@ -112,18 +116,22 @@ export default function AdminPanelScreen({ navigate, groupId }) {
               ✓ {lastAdded.name} added as {lastAdded.role}
             </div>
             <div style={{fontSize:13,color:'var(--text2)',marginBottom:10,lineHeight:1.5}}>
-              Share this <strong>Participant ID</strong> with them so they can set up their account:
+              {lastAdded.reused
+                ? <>This is an existing person — they can already sign in with their <strong>Participant ID</strong> below and will now see this group too.</>
+                : <>Share this <strong>Participant ID</strong> with them so they can set up their account:</>}
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:10,background:'var(--surface3)',borderRadius:10,padding:'10px 14px',cursor:'pointer'}}
+            <div style={{display:'flex',alignItems:'center',gap:10,background:'var(--surface3)',borderRadius:0,padding:'10px 14px',cursor:'pointer'}}
               onClick={() => copyPid(lastAdded.participant_id)}>
               <code style={{flex:1,fontFamily:'monospace',fontSize:18,fontWeight:700,color:'var(--accent)',letterSpacing:'0.04em'}}>
                 {lastAdded.participant_id}
               </code>
               {copied ? <Check size={18} style={{color:'var(--green)'}}/> : <Copy size={16} style={{color:'var(--text3)'}}/>}
             </div>
-            <div style={{fontSize:11,color:'var(--text3)',marginTop:8}}>
-              They use this ID + set their own PIN on first login → <em>Sign In → New Participant</em>
-            </div>
+            {!lastAdded.reused && (
+              <div style={{fontSize:11,color:'var(--text3)',marginTop:8}}>
+                They use this ID + set their own PIN on first login → <em>Sign In → New Participant</em>
+              </div>
+            )}
           </div>
         )}
 
@@ -138,7 +146,7 @@ export default function AdminPanelScreen({ navigate, groupId }) {
                 <div style={{fontSize:11,display:'flex',gap:6,alignItems:'center',marginTop:2}}>
                   <span style={{color:'var(--accent)'}}>🛡️ Admin</span>
                   {m.participant_id && (
-                    <span style={{color:'var(--text3)',fontFamily:'monospace',fontSize:10,background:'var(--surface3)',padding:'1px 6px',borderRadius:4,cursor:'pointer'}}
+                    <span style={{color:'var(--text3)',fontFamily:'monospace',fontSize:10,background:'var(--surface3)',padding:'1px 6px',borderRadius:0,cursor:'pointer'}}
                       onClick={()=>copyPid(m.participant_id)} title="Copy ID">
                       {m.participant_id}
                     </span>
@@ -172,7 +180,7 @@ export default function AdminPanelScreen({ navigate, groupId }) {
                 <div style={{fontSize:11,display:'flex',gap:6,alignItems:'center',marginTop:2}}>
                   <span style={{color:'var(--text3)'}}>👁️ Viewer</span>
                   {m.participant_id && (
-                    <span style={{color:'var(--text3)',fontFamily:'monospace',fontSize:10,background:'var(--surface3)',padding:'1px 6px',borderRadius:4,cursor:'pointer'}}
+                    <span style={{color:'var(--text3)',fontFamily:'monospace',fontSize:10,background:'var(--surface3)',padding:'1px 6px',borderRadius:0,cursor:'pointer'}}
                       onClick={()=>copyPid(m.participant_id)} title="Copy ID">
                       {m.participant_id}
                     </span>
@@ -196,9 +204,12 @@ export default function AdminPanelScreen({ navigate, groupId }) {
             <div className="section-title">Add New Member</div>
             <div className="card">
               <div className="input-group">
-                <input className="input" placeholder="Member name" value={newName}
-                  onChange={e=>{setNewName(e.target.value);setError('');}}
-                  onKeyDown={e=>e.key==='Enter'&&handleAddMember()}/>
+                <MemberAutocomplete value={newName}
+                  onChange={v => { setNewName(v); setNewParticipantId(null); setError(''); }}
+                  knownMembers={knownMembers}
+                  onSelect={m => { setNewName(m.name); setNewParticipantId(m.participant_id); setError(''); }}
+                  onEnter={handleAddMember}
+                  placeholder="Member name" />
               </div>
               <div style={{display:'flex',gap:8,margin:'10px 0'}}>
                 {['member','admin'].map(r => (
