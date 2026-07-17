@@ -98,7 +98,7 @@ export async function registerUser({ username, pin, displayName, securityQuestio
     if (ex) throw new Error('User ID already taken.');
     await enqueue('users', 'insert', rec);
   }
-  await cache.users.put(rec);
+  await cache.users.put(rec).catch(() => {});
   return withId.user(rec);
 }
 
@@ -112,7 +112,7 @@ export async function loginUser({ username, pin }) {
       s.from('users').select('*').eq('user_id', user_id).maybeSingle()
     );
     if (data) {
-      await cache.users.put(data);
+      await cache.users.put(data).catch(() => {});
       user = data;
     }
   }
@@ -189,7 +189,7 @@ export async function resetPin({ username, securityAnswer, newPin }) {
   if (online()) {
     await sb(s => s.from('users').update({ pin_hash: newPin }).eq('user_id', user_id));
   }
-  await cache.users.where('user_id').equals(user_id).modify({ pin_hash: newPin });
+  await cache.users.where('user_id').equals(user_id).modify({ pin_hash: newPin }).catch(() => {});
 }
 
 // ─── GROUPS ───────────────────────────────────────────────────────────────────
@@ -208,7 +208,7 @@ export async function createGroup({ uid, name, type, mode, creatorName }) {
     await enqueue('groups', 'insert', rec);
   }
   _log(group_id, uid, 'create', 'group', uid, `Created "${name}"`);
-  await cache.groups.put(rec);
+  await cache.groups.put(rec).catch(() => {});
 
   // Auto-add creator as admin member
   const member_id = newId();
@@ -221,7 +221,7 @@ export async function createGroup({ uid, name, type, mode, creatorName }) {
   };
   if (online()) await sb(s => s.from('members').insert(memberRec)).catch(() => {});
   else await enqueue('members', 'insert', memberRec);
-  await cache.members.put(memberRec);
+  await cache.members.put(memberRec).catch(() => {});
 
   return group_id;
 }
@@ -232,7 +232,7 @@ export async function getGroup(group_id) {
     const { data } = await sb(s =>
       s.from('groups').select('*').eq('group_id', group_id).maybeSingle()
     );
-    if (data) { await cache.groups.put(data); return withId.group(data); }
+    if (data) { await cache.groups.put(data).catch(() => {}); return withId.group(data); }
   }
   return withId.group(await cache.groups.get(group_id));
 }
@@ -259,7 +259,7 @@ export async function getVisibleGroups(user) {
 
     for (const g of all) await cache.groups.put(g).catch(() => {});
   } else {
-    all = await cache.groups.toArray();
+    all = await cache.groups.toArray().catch(() => {});
   }
   return all
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -273,7 +273,7 @@ export async function updateGroupName(group_id, name, by) {
     await enqueue('groups', 'update', { group_id, name });
   }
   _log(group_id, by, 'edit', 'group', by, `Renamed to "${name}"`);
-  await cache.groups.where('group_id').equals(group_id).modify({ name });
+  await cache.groups.where('group_id').equals(group_id).modify({ name }).catch(() => {});
 }
 
 // ─── MEMBERS ──────────────────────────────────────────────────────────────────
@@ -290,7 +290,7 @@ export async function addMember(group_id, uid, name, role = 'member', by = '', p
   } else {
     await enqueue('members', 'insert', rec);
   }
-  await cache.members.put(rec);
+  await cache.members.put(rec).catch(() => {});
   _log(group_id, uid, 'add', 'member', by || name,
       `Added "${name}" (${pid}) as ${role}`);
   return { id: member_id, participant_id: pid };
@@ -310,7 +310,7 @@ export async function getKnownMembers(user) {
     if (data) rows = data;
   }
   if (!rows.length) {
-    rows = await cache.members.where('group_id').anyOf(groupIds).toArray();
+    rows = await cache.members.where('group_id').anyOf(groupIds).toArray().catch(() => []);
   }
 
   const uid = (user.user_id || user.uid || user.username || '').toLowerCase().trim();
@@ -331,7 +331,7 @@ export async function removeMember(member_id, group_id, uid, by) {
     await enqueue('members', 'delete', { member_id });
   }
   _log(group_id, uid, 'delete', 'member', by, `Removed member`);
-  await cache.members.where('member_id').equals(member_id).delete();
+  await cache.members.where('member_id').equals(member_id).delete().catch(() => {});
 }
 
 export async function updateMemberRole(member_id, group_id, uid, role, by) {
@@ -341,7 +341,7 @@ export async function updateMemberRole(member_id, group_id, uid, role, by) {
     await enqueue('members', 'update', { member_id, role });
   }
   _log(group_id, uid, 'edit', 'member', by, `Role → ${role}`);
-  await cache.members.where('member_id').equals(member_id).modify({ role });
+  await cache.members.where('member_id').equals(member_id).modify({ role }).catch(() => {});
 }
 
 export async function getMembers(group_id) {
@@ -356,7 +356,7 @@ export async function getMembers(group_id) {
     }
   }
   if (!rows.length) {
-    rows = await cache.members.where('group_id').equals(group_id).toArray();
+    rows = await cache.members.where('group_id').equals(group_id).toArray().catch(() => []);
   }
   return rows.map(withId.member);
 }
@@ -398,8 +398,12 @@ export async function addExpense({ group_id, uid, amount, paid_by, category, not
   } else {
     await enqueue('expenses', 'insert', rec);
   }
-  await cache.expenses.put(rec);
-  if (splits) await replaceExpenseSplits(expense_id, splits);
+  // The local cache is just a mirror once the online write above has
+  // succeeded — a stale/mismatched local schema shouldn't fail the save
+  // itself (this is what surfaced as "Couldn't save" even though the
+  // expense had already been written to the database).
+  await cache.expenses.put(rec).catch(() => {});
+  if (splits) await replaceExpenseSplits(expense_id, splits).catch(() => {});
   _log(group_id, uid, 'add', 'expense', by, `₹${amount} – ${category}`);
   return expense_id;
 }
@@ -421,7 +425,7 @@ export async function updateExpense({ id, group_id, uid, amount, paid_by, catego
     await enqueue('expenses', 'update', { expense_id, ...upd });
   }
   _log(group_id, uid, 'edit', 'expense', by, `Edited ₹${amount}`);
-  await cache.expenses.where('expense_id').equals(expense_id).modify(upd);
+  await cache.expenses.where('expense_id').equals(expense_id).modify(upd).catch(() => {});
   if (splits) await replaceExpenseSplits(expense_id, splits);
 }
 
@@ -437,7 +441,7 @@ async function replaceExpenseSplits(expense_id, splits) {
     await enqueue('expense_splits', 'delete', { expense_id });
     if (rows.length) await enqueue('expense_splits', 'insert', rows);
   }
-  await cache.expense_splits.where('expense_id').equals(expense_id).delete();
+  await cache.expense_splits.where('expense_id').equals(expense_id).delete().catch(() => {});
   for (const r of rows) await cache.expense_splits.add(r).catch(() => {});
 }
 
@@ -468,7 +472,7 @@ export async function deleteExpense(id, group_id, uid, by) {
     await enqueue('expenses', 'update', { expense_id, deleted: true });
   }
   _log(group_id, uid, 'delete', 'expense', by, `Deleted expense`);
-  await cache.expenses.where('expense_id').equals(expense_id).modify({ deleted: true });
+  await cache.expenses.where('expense_id').equals(expense_id).modify({ deleted: true }).catch(() => {});
 }
 
 export async function getExpenses(group_id) {
@@ -486,7 +490,7 @@ export async function getExpenses(group_id) {
     }
   }
   if (!rows.length) {
-    rows = (await cache.expenses.where('group_id').equals(group_id).toArray())
+    rows = (await cache.expenses.where('group_id').equals(group_id).toArray().catch(() => []))
       .filter(e => !e.deleted);
   }
   return rows
@@ -514,7 +518,7 @@ export async function addCollection({ group_id, uid, member_name, amount, notes,
   } else {
     await enqueue('collections', 'insert', rec);
   }
-  await cache.collections.put(rec);
+  await cache.collections.put(rec).catch(() => {});
   _log(group_id, uid, 'add', 'collection', by || member_name,
       `₹${amount} from ${member_name}`);
   return collection_id;
@@ -536,7 +540,7 @@ export async function updateCollection({ id, group_id, uid, member_name, amount,
     await enqueue('collections', 'update', { collection_id, ...upd });
   }
   _log(group_id, uid, 'edit', 'collection', by, `Edited ₹${amount}`);
-  await cache.collections.where('collection_id').equals(collection_id).modify(upd);
+  await cache.collections.where('collection_id').equals(collection_id).modify(upd).catch(() => {});
 }
 
 export async function deleteCollection(id, group_id, uid, by) {
@@ -547,7 +551,7 @@ export async function deleteCollection(id, group_id, uid, by) {
     await enqueue('collections', 'update', { collection_id, deleted: true });
   }
   _log(group_id, uid, 'delete', 'collection', by, `Deleted collection`);
-  await cache.collections.where('collection_id').equals(collection_id).modify({ deleted: true });
+  await cache.collections.where('collection_id').equals(collection_id).modify({ deleted: true }).catch(() => {});
 }
 
 export async function getCollections(group_id) {
@@ -565,7 +569,7 @@ export async function getCollections(group_id) {
     }
   }
   if (!rows.length) {
-    rows = (await cache.collections.where('group_id').equals(group_id).toArray())
+    rows = (await cache.collections.where('group_id').equals(group_id).toArray().catch(() => []))
       .filter(c => !c.deleted);
   }
   return rows
@@ -598,7 +602,7 @@ export async function getAuditLogs(group_id) {
     if (data) rows = data;
   }
   if (!rows.length) {
-    rows = (await cache.audit_logs.where('group_id').equals(group_id).toArray()).reverse();
+    rows = (await cache.audit_logs.where('group_id').equals(group_id).toArray().catch(() => [])).reverse();
   }
   return rows.map(withId.log);
 }
@@ -621,7 +625,7 @@ export async function addSettlement({ group_id, uid, from_member, to_member, amo
   } else {
     await enqueue('settlements', 'insert', rec);
   }
-  await cache.settlements.put(rec);
+  await cache.settlements.put(rec).catch(() => {});
   _log(group_id, uid, 'add', 'settlement', by, `₹${amount} settled`);
   return settlement_id;
 }
@@ -634,7 +638,7 @@ export async function deleteSettlement(id, group_id, uid, by) {
     await enqueue('settlements', 'update', { settlement_id, deleted: true });
   }
   _log(group_id, uid, 'delete', 'settlement', by, `Removed a settlement`);
-  await cache.settlements.where('settlement_id').equals(settlement_id).modify({ deleted: true });
+  await cache.settlements.where('settlement_id').equals(settlement_id).modify({ deleted: true }).catch(() => {});
 }
 
 export async function getSettlements(group_id) {
@@ -668,7 +672,7 @@ export async function closeGroup(group_id, closed, uid, by) {
     await enqueue('groups', 'update', { group_id, closed });
   }
   _log(group_id, uid, 'edit', 'group', by, closed ? 'Closed the group' : 'Reopened the group');
-  await cache.groups.where('group_id').equals(group_id).modify({ closed });
+  await cache.groups.where('group_id').equals(group_id).modify({ closed }).catch(() => {});
 }
 
 // ─── FULL GROUP DATA ──────────────────────────────────────────────────────────
@@ -698,7 +702,7 @@ export async function getGroupData(group_id) {
     };
     if (online()) await sb(s => s.from('members').insert(memberRec)).catch(() => {});
     else await enqueue('members', 'insert', memberRec);
-    await cache.members.put(memberRec);
+    await cache.members.put(memberRec).catch(() => {});
     members.push(withId.member(memberRec));
   }
 
@@ -722,7 +726,7 @@ export async function setSetting(uid, key, value) {
 // ─── OFFLINE SYNC FLUSH ───────────────────────────────────────────────────────
 export async function flushSyncQueue() {
   if (!online()) return 0;
-  const items = await cache.sync_queue.toArray();
+  const items = await cache.sync_queue.toArray().catch(() => {});
   let synced = 0;
   for (const item of items) {
     try {
@@ -737,7 +741,7 @@ export async function flushSyncQueue() {
         const [k, v] = Object.entries(data)[0];
         await sb(s => s.from(item.table).delete().eq(k, v));
       }
-      await cache.sync_queue.delete(item.id);
+      await cache.sync_queue.delete(item.id).catch(() => {});
       synced++;
     } catch {}
   }
@@ -750,7 +754,7 @@ if (typeof window !== 'undefined') {
 
 // ─── DELETE GROUP ─────────────────────────────────────────────────────────────
 export async function deleteGroup(group_id, uid) {
-  const expenseIds = (await cache.expenses.where('group_id').equals(group_id).primaryKeys()).map(String);
+  const expenseIds = (await cache.expenses.where('group_id').equals(group_id).primaryKeys().catch(() => [])).map(String);
   if (online()) {
     // Cascade delete all related data
     await sb(s => s.from('collections').delete().eq('group_id', group_id));
@@ -763,13 +767,13 @@ export async function deleteGroup(group_id, uid) {
     await enqueue('groups', 'delete', { group_id });
   }
   // Clear local cache
-  await cache.collections.where('group_id').equals(group_id).delete();
-  await cache.settlements.where('group_id').equals(group_id).delete();
-  if (expenseIds.length) await cache.expense_splits.where('expense_id').anyOf(expenseIds).delete();
-  await cache.expenses.where('group_id').equals(group_id).delete();
-  await cache.members.where('group_id').equals(group_id).delete();
-  await cache.audit_logs.where('group_id').equals(group_id).delete();
-  await cache.groups.delete(group_id);
+  await cache.collections.where('group_id').equals(group_id).delete().catch(() => {});
+  await cache.settlements.where('group_id').equals(group_id).delete().catch(() => {});
+  if (expenseIds.length) await cache.expense_splits.where('expense_id').anyOf(expenseIds).delete().catch(() => {});
+  await cache.expenses.where('group_id').equals(group_id).delete().catch(() => {});
+  await cache.members.where('group_id').equals(group_id).delete().catch(() => {});
+  await cache.audit_logs.where('group_id').equals(group_id).delete().catch(() => {});
+  await cache.groups.delete(group_id).catch(() => {});
 }
 
 // ─── UPDATE MEMBER NAME (for self-healing creator display name) ───────────────
@@ -815,11 +819,11 @@ export async function changeUserId({ oldUserId, newUserId, pin }) {
   // Update local cache
   const userData = await cache.users.get(old_id);
   if (userData) {
-    await cache.users.delete(old_id);
-    await cache.users.put({ ...userData, user_id: new_id });
+    await cache.users.delete(old_id).catch(() => {});
+    await cache.users.put({ ...userData, user_id: new_id }).catch(() => {});
   }
-  await cache.members.where('participant_id').equals(old_id).modify({ participant_id: new_id });
-  await cache.groups.where('owner_id').equals(old_id).modify({ owner_id: new_id });
+  await cache.members.where('participant_id').equals(old_id).modify({ participant_id: new_id }).catch(() => {});
+  await cache.groups.where('owner_id').equals(old_id).modify({ owner_id: new_id }).catch(() => {});
 
   return new_id;
 }
