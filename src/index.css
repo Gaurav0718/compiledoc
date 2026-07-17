@@ -160,7 +160,14 @@
 }
 
 /* ── RESET ─────────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after {
+  box-sizing: border-box; margin: 0; padding: 0;
+  /* Kills the gray/blue flash mobile WebKit shows on every tap before a
+     custom :active style can take over — on a rapid-tap UI like the PIN
+     pad this flash-then-override cycle on every single digit is a real,
+     visible part of what reads as "laggy", separate from any transition. */
+  -webkit-tap-highlight-color: transparent;
+}
 html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
@@ -535,6 +542,11 @@ textarea.input { resize: vertical; min-height: 70px; }
   color: var(--text);
   font-size: 22px; font-weight: 600;
   cursor: pointer;
+  /* Skips the browser's tap-vs-double-tap-zoom gesture disambiguation wait
+     on this element — most relevant on iOS Chrome, which layers its own
+     touch handling on top of WebKit and can be slower to resolve this than
+     Safari itself. */
+  touch-action: manipulation;
   display: flex; align-items: center; justify-content: center;
   /* transform only — it's the one property that's GPU-composited, so it
      doesn't force a repaint. Animating background/border/box-shadow (the

@@ -16,11 +16,10 @@ const SECURITY_QUESTIONS = [
 function PinPad({ value, onChange, onComplete, loading }) {
   const handleKey = (k) => {
     if (loading) return;
-    if (k === 'del') { onChange(value.slice(0, -1)); setTimeout(sounds.tap, 0); return; }
+    if (k === 'del') { onChange(value.slice(0, -1)); return; }
     if (value.length >= 4) return;
     const next = value + k;
     onChange(next);
-    setTimeout(sounds.tap, 0); // deferred so the PIN-dot paint isn't blocked by audio synthesis
     if (next.length === 4) setTimeout(() => onComplete?.(next), 120);
   };
   return (
