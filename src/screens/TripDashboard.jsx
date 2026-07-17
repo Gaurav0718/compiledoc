@@ -34,10 +34,22 @@ export default function TripDashboard({ navigate, groupId }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleSaveExpense = async (vals) => {
-    if (sheet?.item) await updateExpense({ id:sheet.item.id, group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
-    else await addExpense({ group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
-    sounds.success(); setSheet(null); load();
+  const handleSaveExpense = (vals) => {
+    // Close immediately — the actual write is a network round trip, and
+    // waiting on it before dismissing the sheet is what made "Save" feel
+    // slow/unresponsive, especially on a slower mobile connection.
+    const item = sheet?.item;
+    setSheet(null);
+    (async () => {
+      try {
+        if (item) await updateExpense({ id:item.id, group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
+        else await addExpense({ group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
+        sounds.success();
+      } catch (e) {
+        alert(`Couldn't save: ${e.message || 'check your connection and try again'}`);
+      }
+      load();
+    })();
   };
 
   const handleDeleteExpense = async (id) => {

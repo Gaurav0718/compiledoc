@@ -81,24 +81,6 @@ export default function PublicDashboard({ navigate, groupId }) {
         <ThemeToggle/>
       </div>
 
-      {/* Share card */}
-      <div style={{ margin:'0 16px 8px', padding:'14px 16px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:0 }}>
-        <div style={{ fontSize:12, color:'var(--text3)', marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
-          <Lock size={12}/> Read-only public view · <span style={{ color:'var(--accent)', cursor:'pointer', textDecoration:'underline' }} onClick={() => navigate('home')}>Sign in to edit</span>
-        </div>
-        <div style={{ fontFamily:'monospace', fontSize:12, color:'var(--text2)', background:'var(--surface2)', borderRadius:0, padding:'8px 10px', marginBottom:10, wordBreak:'break-all', border:'1px solid var(--border)' }}>
-          {shareUrl}
-        </div>
-        <div style={{ display:'flex', gap:8 }}>
-          <button className="btn btn-action btn-sm" style={{ flex:1, gap:6, fontSize:13 }} onClick={copyLink}>
-            {copied ? <><Check size={14}/> Copied!</> : <><Copy size={14}/> Copy Link</>}
-          </button>
-          <button className="btn btn-action btn-sm" style={{ flex:1, gap:6, fontSize:13 }} onClick={shareWhatsApp}>
-            <Share2 size={14}/> WhatsApp
-          </button>
-        </div>
-      </div>
-
       <div className="content">
         {/* TALLY CARD */}
         <div className="tally-card">
@@ -293,6 +275,25 @@ export default function PublicDashboard({ navigate, groupId }) {
           <button className="btn btn-primary" style={{ maxWidth:220, margin:'0 auto' }} onClick={() => navigate('home')}>
             Sign In to Edit
           </button>
+        </div>
+
+        {/* Share card — always shown, whether you're the owner viewing your
+            own group's link or a visitor who arrived via that link. */}
+        <div className="card" style={{ padding:'14px 16px' }}>
+          <div style={{ fontSize:12, color:'var(--text3)', marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
+            <Lock size={12}/> Read-only public view · <span style={{ color:'var(--accent)', cursor:'pointer', textDecoration:'underline' }} onClick={() => navigate('home')}>Sign in to edit</span>
+          </div>
+          <div style={{ fontFamily:'monospace', fontSize:12, color:'var(--text2)', background:'var(--surface2)', borderRadius:0, padding:'8px 10px', marginBottom:10, wordBreak:'break-all', border:'1px solid var(--border)' }}>
+            {shareUrl}
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button className="btn btn-action btn-sm" style={{ flex:1, gap:6, fontSize:13 }} onClick={copyLink}>
+              {copied ? <><Check size={14}/> Copied!</> : <><Copy size={14}/> Copy Link</>}
+            </button>
+            <button className="btn btn-action btn-sm" style={{ flex:1, gap:6, fontSize:13 }} onClick={shareWhatsApp}>
+              <Share2 size={14}/> WhatsApp
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -74,10 +74,21 @@ export default function SplitwiseDashboard({ navigate, groupId }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleSaveExpense = async (vals) => {
-    if (sheet?.item) await updateExpense({ id:sheet.item.id, group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
-    else await addExpense({ group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
-    sounds.success(); setSheet(null); load();
+  const handleSaveExpense = (vals) => {
+    // Close immediately — waiting on the network write before dismissing
+    // the sheet is what made saving feel slow on a slower connection.
+    const item = sheet?.item;
+    setSheet(null);
+    (async () => {
+      try {
+        if (item) await updateExpense({ id:item.id, group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
+        else await addExpense({ group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
+        sounds.success();
+      } catch (e) {
+        alert(`Couldn't save: ${e.message || 'check your connection and try again'}`);
+      }
+      load();
+    })();
   };
 
   const handleDeleteExpense = async (id) => {
@@ -86,9 +97,17 @@ export default function SplitwiseDashboard({ navigate, groupId }) {
     sounds.delete(); load();
   };
 
-  const handleSettle = async (from, to, vals) => {
-    await addSettlement({ group_id: groupId, uid: user.uid, by: user.displayName, from_member: from.id, to_member: to.id, ...vals });
-    sounds.success(); setSheet(null); load();
+  const handleSettle = (from, to, vals) => {
+    setSheet(null);
+    (async () => {
+      try {
+        await addSettlement({ group_id: groupId, uid: user.uid, by: user.displayName, from_member: from.id, to_member: to.id, ...vals });
+        sounds.success();
+      } catch (e) {
+        alert(`Couldn't save: ${e.message || 'check your connection and try again'}`);
+      }
+      load();
+    })();
   };
 
   const handleDeleteSettlement = async (id) => {

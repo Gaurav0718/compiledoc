@@ -71,10 +71,21 @@ export function CollectionListScreen({ navigate, groupId }) {
     }
   };
 
-  const handleSave = async (vals) => {
-    if (sheet?.item) await updateCollection({ id:sheet.item.id, group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
-    else await addCollection({ group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
-    sounds.success(); setSheet(null); load();
+  const handleSave = (vals) => {
+    // Close immediately — waiting on the network write before dismissing
+    // the sheet is what made saving feel slow on a slower connection.
+    const item = sheet?.item;
+    setSheet(null);
+    (async () => {
+      try {
+        if (item) await updateCollection({ id:item.id, group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
+        else await addCollection({ group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
+        sounds.success();
+      } catch (e) {
+        alert(`Couldn't save: ${e.message || 'check your connection and try again'}`);
+      }
+      load();
+    })();
   };
   const handleDelete = async (id) => {
     if (!confirm('Delete?')) return;
@@ -164,10 +175,19 @@ export function ExpenseListScreen({ navigate, groupId }) {
     }
   };
 
-  const handleSave = async (vals) => {
-    if (sheet?.item) await updateExpense({ id:sheet.item.id, group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
-    else await addExpense({ group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
-    sounds.success(); setSheet(null); load();
+  const handleSave = (vals) => {
+    const item = sheet?.item;
+    setSheet(null);
+    (async () => {
+      try {
+        if (item) await updateExpense({ id:item.id, group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
+        else await addExpense({ group_id:groupId, uid:user.uid, by:user.displayName, ...vals });
+        sounds.success();
+      } catch (e) {
+        alert(`Couldn't save: ${e.message || 'check your connection and try again'}`);
+      }
+      load();
+    })();
   };
   const handleDelete = async (id) => {
     if (!confirm('Delete?')) return;
