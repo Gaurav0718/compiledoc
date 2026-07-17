@@ -56,13 +56,19 @@ export function CollectionListScreen({ navigate, groupId }) {
   const [sheet, setSheet]   = useState(null);
   const [search, setSearch] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => { load(); }, [groupId]);
   const load = async () => {
-    const d = await getGroupData(groupId);
-    setData(d);
-    const admin = await checkIsAdmin(groupId, user);
-    setIsAdmin(admin);
+    setLoadError(false);
+    try {
+      const d = await getGroupData(groupId);
+      setData(d);
+      const admin = await checkIsAdmin(groupId, user);
+      setIsAdmin(admin);
+    } catch {
+      setLoadError(true);
+    }
   };
 
   const handleSave = async (vals) => {
@@ -76,7 +82,17 @@ export function CollectionListScreen({ navigate, groupId }) {
     sounds.delete(); load();
   };
 
-  if (!data) return <div className="screen"><div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)' }}>Loading…</div></div>;
+  if (loadError) return <div className="screen">
+    <Header title="Collections" onBack={() => navigate(dashRoute('family'), { groupId })} />
+    <div style={{ flex:1,display:'flex',flexDirection:'column',gap:12,alignItems:'center',justifyContent:'center',color:'var(--text3)',padding:20,textAlign:'center' }}>
+      <div>Couldn't load. Check your connection and try again.</div>
+      <button className="btn btn-secondary" onClick={load}>Retry</button>
+    </div>
+  </div>;
+  if (!data) return <div className="screen">
+    <Header title="Collections" onBack={() => navigate(dashRoute('family'), { groupId })} />
+    <div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)' }}>Loading…</div>
+  </div>;
 
   const { collections, group, members } = data;
   const filtered = search ? collections.filter(c => c.member_name.toLowerCase().includes(search.toLowerCase())||(c.notes||'').toLowerCase().includes(search.toLowerCase())) : collections;
@@ -133,13 +149,19 @@ export function ExpenseListScreen({ navigate, groupId }) {
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => { load(); }, [groupId]);
   const load = async () => {
-    const d = await getGroupData(groupId);
-    setData(d);
-    const admin = await checkIsAdmin(groupId, user);
-    setIsAdmin(admin);
+    setLoadError(false);
+    try {
+      const d = await getGroupData(groupId);
+      setData(d);
+      const admin = await checkIsAdmin(groupId, user);
+      setIsAdmin(admin);
+    } catch {
+      setLoadError(true);
+    }
   };
 
   const handleSave = async (vals) => {
@@ -153,7 +175,17 @@ export function ExpenseListScreen({ navigate, groupId }) {
     sounds.delete(); load();
   };
 
-  if (!data) return <div className="screen"><div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)' }}>Loading…</div></div>;
+  if (loadError) return <div className="screen">
+    <Header title="Expenses" onBack={() => navigate('home')} />
+    <div style={{ flex:1,display:'flex',flexDirection:'column',gap:12,alignItems:'center',justifyContent:'center',color:'var(--text3)',padding:20,textAlign:'center' }}>
+      <div>Couldn't load. Check your connection and try again.</div>
+      <button className="btn btn-secondary" onClick={load}>Retry</button>
+    </div>
+  </div>;
+  if (!data) return <div className="screen">
+    <Header title="Expenses" onBack={() => navigate('home')} />
+    <div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)' }}>Loading…</div>
+  </div>;
 
   const { expenses, group, members } = data;
   const memberMap = {}; members.forEach(m=>memberMap[m.id]=m.name);
@@ -217,8 +249,8 @@ export function ActivityLogScreen({ navigate, groupId }) {
   const [filter, setFilter] = useState('All');
 
   useEffect(() => {
-    getAuditLogsStatic(groupId).then(setLogs);
-    getGroupStatic(groupId).then(setGroup);
+    getAuditLogsStatic(groupId).then(setLogs).catch(() => {});
+    getGroupStatic(groupId).then(setGroup).catch(() => {});
   }, [groupId]);
 
   const filtered = filter==='All' ? logs : logs.filter(l=>l.entity===filter);
@@ -277,7 +309,7 @@ export function SettlementScreen({ navigate, groupId }) {
         const bals = calculateBalances(d.members, d.expenses, d.participantsMap, d.collections, d.group?.mode);
         setBalances(bals);
         setSettlements(calculateSettlements(bals));
-      });
+      }).catch(() => {});
   }, [groupId]);
 
   const toggle = i => setSettled(p=>p.includes(i)?p.filter(x=>x!==i):[...p,i]);

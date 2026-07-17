@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx';
+// xlsx is a large library only needed when someone actually exports —
+// loaded on demand instead of bloating every page's initial bundle.
 
 // DD-MM-YYYY  e.g. 26-12-2025  → for Excel
 function fmtXLSX(d) {
@@ -20,7 +21,8 @@ function fmtPDF(d) {
   return `${dd} ${months[dt.getMonth()]} ${dt.getFullYear()}`;
 }
 
-export function exportXLSX(groupName, collections, expenses, tally, members, settlements) {
+export async function exportXLSX(groupName, collections, expenses, tally, members, settlements) {
+  const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
   const summaryData = [
     ['CompileDoc – Financial Report'],

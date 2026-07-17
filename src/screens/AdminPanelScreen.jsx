@@ -18,27 +18,33 @@ export default function AdminPanelScreen({ navigate, groupId }) {
   const [isAdmin, setIsAdmin]   = useState(false);
   const [lastAdded, setLastAdded] = useState(null); // {name, participant_id}
   const [copied, setCopied]     = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => { load(); }, [groupId]);
   useEffect(() => { if (user) getKnownMembers(user).then(setKnownMembers); }, [user]);
 
   const load = async () => {
-    const d = await getGroupData(groupId);
-    // Fix: if creator member record has name = owner_id (raw user_id), 
-    // update it to the proper display name now that we know who they are
-    if (d.group && user) {
-      const ownerUid = d.group.owner_id;
-      const creatorMember = d.members.find(m =>
-        m.participant_id === ownerUid && m.name === ownerUid
-      );
-      if (creatorMember && user.displayName && user.uid === ownerUid) {
-        await updateMemberName(creatorMember.id, user.displayName);
-        creatorMember.name = user.displayName; // update in-place for UI
+    setLoadError(false);
+    try {
+      const d = await getGroupData(groupId);
+      // Fix: if creator member record has name = owner_id (raw user_id),
+      // update it to the proper display name now that we know who they are
+      if (d.group && user) {
+        const ownerUid = d.group.owner_id;
+        const creatorMember = d.members.find(m =>
+          m.participant_id === ownerUid && m.name === ownerUid
+        );
+        if (creatorMember && user.displayName && user.uid === ownerUid) {
+          await updateMemberName(creatorMember.id, user.displayName);
+          creatorMember.name = user.displayName; // update in-place for UI
+        }
       }
+      setData(d);
+      setGroupNameEdit(d.group?.name || '');
+      setIsAdmin(await checkIsAdmin(groupId, user));
+    } catch {
+      setLoadError(true);
     }
-    setData(d);
-    setGroupNameEdit(d.group?.name || '');
-    setIsAdmin(await checkIsAdmin(groupId, user));
   };
 
   const handleAddMember = async () => {
@@ -78,7 +84,17 @@ export default function AdminPanelScreen({ navigate, groupId }) {
     sounds.tap();
   };
 
-  if (!data) return <div className="screen"><div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)'}}>Loading…</div></div>;
+  if (loadError) return <div className="screen">
+    <Header title="Admin Panel" onBack={() => navigate('home')} />
+    <div style={{ flex:1,display:'flex',flexDirection:'column',gap:12,alignItems:'center',justifyContent:'center',color:'var(--text3)',padding:20,textAlign:'center' }}>
+      <div>Couldn't load. Check your connection and try again.</div>
+      <button className="btn btn-secondary" onClick={load}>Retry</button>
+    </div>
+  </div>;
+  if (!data) return <div className="screen">
+    <Header title="Admin Panel" onBack={() => navigate('home')} />
+    <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)'}}>Loading…</div>
+  </div>;
 
   const admins  = data.members.filter(m => m.role === 'admin');
   const viewers = data.members.filter(m => m.role !== 'admin');

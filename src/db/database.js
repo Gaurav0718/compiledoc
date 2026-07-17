@@ -189,7 +189,7 @@ export async function createGroup({ uid, name, type, mode, creatorName }) {
   } else {
     await enqueue('groups', 'insert', rec);
   }
-  await _log(group_id, uid, 'create', 'group', uid, `Created "${name}"`);
+  _log(group_id, uid, 'create', 'group', uid, `Created "${name}"`);
   await cache.groups.put(rec);
 
   // Auto-add creator as admin member
@@ -254,7 +254,7 @@ export async function updateGroupName(group_id, name, by) {
   } else {
     await enqueue('groups', 'update', { group_id, name });
   }
-  await _log(group_id, by, 'edit', 'group', by, `Renamed to "${name}"`);
+  _log(group_id, by, 'edit', 'group', by, `Renamed to "${name}"`);
   await cache.groups.where('group_id').equals(group_id).modify({ name });
 }
 
@@ -273,7 +273,7 @@ export async function addMember(group_id, uid, name, role = 'member', by = '', p
     await enqueue('members', 'insert', rec);
   }
   await cache.members.put(rec);
-  await _log(group_id, uid, 'add', 'member', by || name,
+  _log(group_id, uid, 'add', 'member', by || name,
       `Added "${name}" (${pid}) as ${role}`);
   return { id: member_id, participant_id: pid };
 }
@@ -312,7 +312,7 @@ export async function removeMember(member_id, group_id, uid, by) {
   } else {
     await enqueue('members', 'delete', { member_id });
   }
-  await _log(group_id, uid, 'delete', 'member', by, `Removed member`);
+  _log(group_id, uid, 'delete', 'member', by, `Removed member`);
   await cache.members.where('member_id').equals(member_id).delete();
 }
 
@@ -322,7 +322,7 @@ export async function updateMemberRole(member_id, group_id, uid, role, by) {
   } else {
     await enqueue('members', 'update', { member_id, role });
   }
-  await _log(group_id, uid, 'edit', 'member', by, `Role → ${role}`);
+  _log(group_id, uid, 'edit', 'member', by, `Role → ${role}`);
   await cache.members.where('member_id').equals(member_id).modify({ role });
 }
 
@@ -382,7 +382,7 @@ export async function addExpense({ group_id, uid, amount, paid_by, category, not
   }
   await cache.expenses.put(rec);
   if (splits) await replaceExpenseSplits(expense_id, splits);
-  await _log(group_id, uid, 'add', 'expense', by, `₹${amount} – ${category}`);
+  _log(group_id, uid, 'add', 'expense', by, `₹${amount} – ${category}`);
   return expense_id;
 }
 
@@ -402,7 +402,7 @@ export async function updateExpense({ id, group_id, uid, amount, paid_by, catego
   } else {
     await enqueue('expenses', 'update', { expense_id, ...upd });
   }
-  await _log(group_id, uid, 'edit', 'expense', by, `Edited ₹${amount}`);
+  _log(group_id, uid, 'edit', 'expense', by, `Edited ₹${amount}`);
   await cache.expenses.where('expense_id').equals(expense_id).modify(upd);
   if (splits) await replaceExpenseSplits(expense_id, splits);
 }
@@ -449,7 +449,7 @@ export async function deleteExpense(id, group_id, uid, by) {
   } else {
     await enqueue('expenses', 'update', { expense_id, deleted: true });
   }
-  await _log(group_id, uid, 'delete', 'expense', by, `Deleted expense`);
+  _log(group_id, uid, 'delete', 'expense', by, `Deleted expense`);
   await cache.expenses.where('expense_id').equals(expense_id).modify({ deleted: true });
 }
 
@@ -497,7 +497,7 @@ export async function addCollection({ group_id, uid, member_name, amount, notes,
     await enqueue('collections', 'insert', rec);
   }
   await cache.collections.put(rec);
-  await _log(group_id, uid, 'add', 'collection', by || member_name,
+  _log(group_id, uid, 'add', 'collection', by || member_name,
       `₹${amount} from ${member_name}`);
   return collection_id;
 }
@@ -517,7 +517,7 @@ export async function updateCollection({ id, group_id, uid, member_name, amount,
   } else {
     await enqueue('collections', 'update', { collection_id, ...upd });
   }
-  await _log(group_id, uid, 'edit', 'collection', by, `Edited ₹${amount}`);
+  _log(group_id, uid, 'edit', 'collection', by, `Edited ₹${amount}`);
   await cache.collections.where('collection_id').equals(collection_id).modify(upd);
 }
 
@@ -528,7 +528,7 @@ export async function deleteCollection(id, group_id, uid, by) {
   } else {
     await enqueue('collections', 'update', { collection_id, deleted: true });
   }
-  await _log(group_id, uid, 'delete', 'collection', by, `Deleted collection`);
+  _log(group_id, uid, 'delete', 'collection', by, `Deleted collection`);
   await cache.collections.where('collection_id').equals(collection_id).modify({ deleted: true });
 }
 
@@ -604,7 +604,7 @@ export async function addSettlement({ group_id, uid, from_member, to_member, amo
     await enqueue('settlements', 'insert', rec);
   }
   await cache.settlements.put(rec);
-  await _log(group_id, uid, 'add', 'settlement', by, `₹${amount} settled`);
+  _log(group_id, uid, 'add', 'settlement', by, `₹${amount} settled`);
   return settlement_id;
 }
 
@@ -615,7 +615,7 @@ export async function deleteSettlement(id, group_id, uid, by) {
   } else {
     await enqueue('settlements', 'update', { settlement_id, deleted: true });
   }
-  await _log(group_id, uid, 'delete', 'settlement', by, `Removed a settlement`);
+  _log(group_id, uid, 'delete', 'settlement', by, `Removed a settlement`);
   await cache.settlements.where('settlement_id').equals(settlement_id).modify({ deleted: true });
 }
 
@@ -649,17 +649,21 @@ export async function closeGroup(group_id, closed, uid, by) {
   } else {
     await enqueue('groups', 'update', { group_id, closed });
   }
-  await _log(group_id, uid, 'edit', 'group', by, closed ? 'Closed the group' : 'Reopened the group');
+  _log(group_id, uid, 'edit', 'group', by, closed ? 'Closed the group' : 'Reopened the group');
   await cache.groups.where('group_id').equals(group_id).modify({ closed });
 }
 
 // ─── FULL GROUP DATA ──────────────────────────────────────────────────────────
 export async function getGroupData(group_id) {
-  const [group, members, expenses, collections] = await Promise.all([
+  // settlements don't depend on expenses, so fetch them in the same round
+  // trip instead of waiting for expenses to resolve first — only splits
+  // need expense ids and have to wait.
+  const [group, members, expenses, collections, settlements] = await Promise.all([
     getGroup(group_id),
     getMembers(group_id),
     getExpenses(group_id),
     getCollections(group_id),
+    getSettlements(group_id),
   ]);
 
   // Self-heal: if group exists but has NO members, auto-add the owner as admin.
@@ -680,10 +684,7 @@ export async function getGroupData(group_id) {
     members.push(withId.member(memberRec));
   }
 
-  const [settlements, splitsMap] = await Promise.all([
-    getSettlements(group_id),
-    getExpenseSplits(expenses.map(e => e.id)),
-  ]);
+  const splitsMap = await getExpenseSplits(expenses.map(e => e.id));
 
   return { group, members, expenses, collections, settlements, splitsMap, participantsMap: {} };
 }

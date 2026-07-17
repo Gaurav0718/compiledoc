@@ -11,6 +11,7 @@ export default function PublicDashboard({ navigate, groupId }) {
   const [tally, setTally]   = useState(null);
   const [cats, setCats]     = useState([]);
   const [copied, setCopied] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   // Build the shareable URL for this group
   const shareUrl = `${window.location.origin}/view/${groupId}`;
@@ -27,15 +28,25 @@ export default function PublicDashboard({ navigate, groupId }) {
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
-  useEffect(() => {
+  const load = () => {
     if (!groupId) return;
+    setLoadError(false);
     getGroupData(groupId).then(d => {
       setData(d);
       setTally(getFamilyTally(d.collections, d.expenses));
       setCats(getCategoryTotals(d.expenses));
-    });
-  }, [groupId]);
+    }).catch(() => setLoadError(true));
+  };
+  useEffect(load, [groupId]);
 
+  if (loadError) return (
+    <div className="screen">
+      <div style={{ flex:1, display:'flex', flexDirection:'column', gap:12, alignItems:'center', justifyContent:'center', color:'var(--text3)', padding:20, textAlign:'center' }}>
+        <div>Couldn't load this group. Check your connection and try again.</div>
+        <button className="btn btn-secondary" onClick={load}>Retry</button>
+      </div>
+    </div>
+  );
   if (!data || !tally) return (
     <div className="screen">
       <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text3)' }}>Loading…</div>

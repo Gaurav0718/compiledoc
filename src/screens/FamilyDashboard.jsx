@@ -71,11 +71,17 @@ export default function FamilyDashboard({ navigate, groupId }) {
     sounds.delete(); load();
   };
 
-  if (loadError) return <div className="screen"><div style={{ flex:1,display:'flex',flexDirection:'column',gap:12,alignItems:'center',justifyContent:'center',color:'var(--text3)',padding:20,textAlign:'center' }}>
-    <div>Couldn't load this group. Check your connection and try again.</div>
-    <button className="btn btn-secondary" onClick={load}>Retry</button>
-  </div></div>;
-  if (!data || !tally) return <div className="screen"><div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)' }}>Loading…</div></div>;
+  if (loadError) return <div className="screen">
+    <Header title="Family Event" onBack={() => navigate('home')} />
+    <div style={{ flex:1,display:'flex',flexDirection:'column',gap:12,alignItems:'center',justifyContent:'center',color:'var(--text3)',padding:20,textAlign:'center' }}>
+      <div>Couldn't load this group. Check your connection and try again.</div>
+      <button className="btn btn-secondary" onClick={load}>Retry</button>
+    </div>
+  </div>;
+  if (!data || !tally) return <div className="screen">
+    <Header title="Family Event" onBack={() => navigate('home')} />
+    <div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)' }}>Loading…</div>
+  </div>;
 
   const { group, expenses, collections, members } = data;
   const collectPct = tally.totalExpenses > 0 ? Math.min(100, (tally.totalCollected/tally.totalExpenses)*100) : 100;

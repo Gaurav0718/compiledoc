@@ -110,11 +110,17 @@ export default function SplitwiseDashboard({ navigate, groupId }) {
     sounds.success(); load();
   };
 
-  if (loadError) return <div className="screen"><div style={{ flex:1,display:'flex',flexDirection:'column',gap:12,alignItems:'center',justifyContent:'center',color:'var(--text3)',padding:20,textAlign:'center' }}>
-    <div>Couldn't load this group. Check your connection and try again.</div>
-    <button className="btn btn-secondary" onClick={load}>Retry</button>
-  </div></div>;
-  if (!data) return <div className="screen"><div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)' }}>Loading…</div></div>;
+  if (loadError) return <div className="screen">
+    <Header title="Split Group" onBack={() => navigate('home')} />
+    <div style={{ flex:1,display:'flex',flexDirection:'column',gap:12,alignItems:'center',justifyContent:'center',color:'var(--text3)',padding:20,textAlign:'center' }}>
+      <div>Couldn't load this group. Check your connection and try again.</div>
+      <button className="btn btn-secondary" onClick={load}>Retry</button>
+    </div>
+  </div>;
+  if (!data) return <div className="screen">
+    <Header title="Split Group" onBack={() => navigate('home')} />
+    <div style={{ flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)' }}>Loading…</div>
+  </div>;
 
   const { group, expenses, members, settlements } = data;
   const totalSpent = expenses.reduce((s,e)=>s+e.amount,0);
