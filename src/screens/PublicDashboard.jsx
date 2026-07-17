@@ -153,7 +153,7 @@ export default function PublicDashboard({ navigate, groupId }) {
                     <div style={{ flex:1, fontSize:13 }}>
                       <strong>{s.from}</strong> <span style={{ color:'var(--text3)' }}>owes</span> <strong>{s.to}</strong>
                     </div>
-                    <div style={{ fontWeight:700, fontSize:14, color:'var(--pink)' }}>{fmt(s.amount)}</div>
+                    <div style={{ fontWeight:700, fontSize:14, color:'var(--accent)' }}>{fmt(s.amount)}</div>
                   </div>
                 ))}
               </div>

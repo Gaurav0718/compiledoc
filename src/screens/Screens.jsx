@@ -355,7 +355,7 @@ export function SettlementScreen({ navigate, groupId }) {
               <div style={{ fontSize:11, color:'var(--text3)', margin:'2px 0' }}>↓ pays</div>
               <div style={{ fontSize:13, color:'var(--text2)' }}>{s.to}</div>
             </div>
-            <div style={{ fontWeight:700, fontSize:18, color:'var(--pink)', letterSpacing:'-0.03em' }}>{fmt(s.amount)}</div>
+            <div style={{ fontWeight:700, fontSize:18, color:'var(--accent)', letterSpacing:'-0.03em' }}>{fmt(s.amount)}</div>
           </div>
         ))}
         <div className="section-title" style={{ marginTop:8 }}>Balances</div>

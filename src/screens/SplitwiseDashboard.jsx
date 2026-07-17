@@ -208,7 +208,7 @@ export default function SplitwiseDashboard({ navigate, groupId }) {
                   <div style={{ flex:1, fontSize:13 }}>
                     <strong>{s.from}</strong> <span style={{ color:'var(--text3)' }}>owes</span> <strong>{s.to}</strong>
                   </div>
-                  <div style={{ fontWeight:700, fontSize:14, color:'var(--pink)' }}>{fmt(s.amount)}</div>
+                  <div style={{ fontWeight:700, fontSize:14, color:'var(--accent)' }}>{fmt(s.amount)}</div>
                   {canEdit && fromM && toM && (
                     <button className="btn btn-xs btn-secondary" style={{ fontSize:11, padding:'5px 10px' }}
                       onClick={() => setSheet({ settle: { from: fromM, to: toM, amount: s.amount } })}>
