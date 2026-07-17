@@ -1,6 +1,7 @@
 import React from 'react';
-import { ArrowLeft, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, Search } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
+import { findUserById } from '../db/database';
 import homeBlue from '../assets/icons/home-blue.png';
 import homeWhite from '../assets/icons/home-white.png';
 import tripBlue from '../assets/icons/trip-blue.png';
@@ -69,31 +70,100 @@ export function ThemeToggle() {
 // every time. `onSelect(member)` fires with { name, participant_id }.
 export function MemberAutocomplete({ value, onChange, knownMembers, onSelect, placeholder, onEnter, autoFocus }) {
   const [open, setOpen] = React.useState(false);
+  const [idMode, setIdMode] = React.useState(false);
   const q = value.trim().toLowerCase();
   const matches = q
     ? (knownMembers || []).filter(m => m.name.toLowerCase().includes(q)).slice(0, 5)
     : [];
 
+  if (idMode) {
+    // Exit back to the normal name view after picking — this both matches
+    // how the name-based autocomplete already behaves (it stages the field,
+    // it doesn't submit) and, crucially, makes the resolved name + the real
+    // "Add"/"Add Member" button visible again so there's something obvious
+    // to click next. Without this the ID view stayed on screen after a pick
+    // and the add button was still hidden behind it.
+    return <IdLookup onSelect={(m) => { onSelect(m); setIdMode(false); }} onCancel={() => setIdMode(false)} autoFocus={autoFocus} />;
+  }
+
   return (
-    <div style={{ position: 'relative' }}>
-      <input className="input" placeholder={placeholder} value={value} autoFocus={autoFocus}
-        autoComplete="off" autoCapitalize="words"
-        onChange={e => onChange(e.target.value)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        onKeyDown={e => e.key === 'Enter' && onEnter?.()} />
-      {open && matches.length > 0 && (
-        <div className="autocomplete-menu">
-          {matches.map(m => (
-            <div key={m.participant_id} className="autocomplete-item"
-              onMouseDown={() => { onSelect(m); setOpen(false); }}>
-              <span className="avatar avatar-xs">{m.name[0]?.toUpperCase() || '?'}</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-              <span className="autocomplete-hint">Existing</span>
-            </div>
-          ))}
+    <div>
+      <div style={{ position: 'relative' }}>
+        <input className="input" placeholder={placeholder} value={value} autoFocus={autoFocus}
+          autoComplete="off" autoCapitalize="words"
+          onChange={e => onChange(e.target.value)}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onKeyDown={e => e.key === 'Enter' && onEnter?.()} />
+        {open && matches.length > 0 && (
+          <div className="autocomplete-menu">
+            {matches.map(m => (
+              <div key={m.participant_id} className="autocomplete-item"
+                onMouseDown={() => { onSelect(m); setOpen(false); }}>
+                <span className="avatar avatar-xs">{m.name[0]?.toUpperCase() || '?'}</span>
+                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+                <span className="autocomplete-hint">Existing</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <button type="button" onClick={() => setIdMode(true)}
+        style={{ background: 'none', border: 'none', color: 'var(--accent2)', fontSize: 12, fontWeight: 600, padding: '6px 2px 0', cursor: 'pointer' }}>
+        Know their ID? Add by ID →
+      </button>
+    </div>
+  );
+}
+
+// Looks up an existing account by its exact ID (e.g. a friend's ID from
+// another group) and lets the caller add them as this real identity instead
+// of creating a new duplicate profile.
+function IdLookup({ onSelect, onCancel, autoFocus }) {
+  const [id, setId] = React.useState('');
+  const [status, setStatus] = React.useState('idle'); // idle | checking | found | notfound
+  const [found, setFound] = React.useState(null);
+
+  const lookup = async () => {
+    const trimmed = id.trim();
+    if (!trimmed) return;
+    setStatus('checking');
+    const user = await findUserById(trimmed).catch(() => null);
+    if (user) { setFound(user); setStatus('found'); }
+    else { setFound(null); setStatus('notfound'); }
+  };
+
+  const confirm = (user) => {
+    onSelect(user);
+    setId(''); setFound(null); setStatus('idle'); // ready for another ID right away
+  };
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input className="input" placeholder="e.g. kamalk_5229" value={id} autoFocus={autoFocus}
+          autoComplete="off" autoCapitalize="none"
+          onChange={e => { setId(e.target.value); setStatus('idle'); setFound(null); }}
+          onKeyDown={e => e.key === 'Enter' && lookup()} />
+        <button className="btn btn-primary btn-icon" type="button" onClick={lookup} disabled={status === 'checking'}>
+          <Search size={16} />
+        </button>
+      </div>
+      {status === 'found' && found && (
+        <div className="autocomplete-item" style={{ marginTop: 8, cursor: 'pointer' }}
+          onClick={() => confirm(found)}>
+          <span className="avatar avatar-xs">{found.name[0]?.toUpperCase() || '?'}</span>
+          <span style={{ flex: 1 }}>{found.name}</span>
+          <span className="autocomplete-hint">Tap to add</span>
         </div>
       )}
+      {status === 'notfound' && (
+        <div style={{ fontSize: 12, color: 'var(--red)', marginTop: 6 }}>No account found with that ID.</div>
+      )}
+      <button type="button" onClick={onCancel}
+        style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 12, fontWeight: 600, padding: '6px 2px 0', cursor: 'pointer' }}>
+        ← Back to typing a name
+      </button>
     </div>
   );
 }

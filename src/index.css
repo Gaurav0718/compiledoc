@@ -243,7 +243,7 @@ body {
   font-size: 32px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--text);
+  color: var(--accent);
   margin-top: 24px;
   animation: slideUp 0.5s ease 0.7s both;
 }
@@ -568,7 +568,7 @@ textarea.input { resize: vertical; min-height: 70px; }
   font-size: 38px; margin-bottom: 20px;
   box-shadow: 0 4px 20px rgba(38,103,255,0.28);
 }
-.auth-title { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; text-align: center; }
+.auth-title { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; text-align: center; color: var(--accent); }
 .auth-sub   { font-size: 14px; color: var(--text3); text-align: center; margin-top: 6px; margin-bottom: 32px; }
 .auth-form  { width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 14px; }
 

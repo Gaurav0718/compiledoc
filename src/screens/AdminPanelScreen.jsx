@@ -50,13 +50,23 @@ export default function AdminPanelScreen({ navigate, groupId }) {
   const handleAddMember = async () => {
     const t = newName.trim();
     if (!t) return;
-    if (data.members.find(m => m.name.toLowerCase() === t.toLowerCase())) { setError('Name already exists'); return; }
-    const result = await addMember(groupId, user.uid, t, newRole, user.displayName, newParticipantId);
-    sounds.success();
-    setLastAdded({ name: t, participant_id: result.participant_id, role: newRole, reused: !!newParticipantId });
-    setNewName(''); setNewParticipantId(null); setError('');
-    load();
-    if (user) getKnownMembers(user).then(setKnownMembers);
+    // When adding by a known ID, only block on that exact ID already being a
+    // member — a name collision with someone else shouldn't block it. For a
+    // brand-new (no ID) entry, fall back to the name check as before.
+    const dupe = newParticipantId
+      ? data.members.find(m => m.participant_id === newParticipantId)
+      : data.members.find(m => m.name.toLowerCase() === t.toLowerCase());
+    if (dupe) { setError(newParticipantId ? `${dupe.name} is already in this group` : 'Name already exists'); return; }
+    try {
+      const result = await addMember(groupId, user.uid, t, newRole, user.displayName, newParticipantId);
+      sounds.success();
+      setLastAdded({ name: t, participant_id: result.participant_id, role: newRole, reused: !!newParticipantId });
+      setNewName(''); setNewParticipantId(null); setError('');
+      load();
+      if (user) getKnownMembers(user).then(setKnownMembers);
+    } catch (e) {
+      setError(e.message || 'Failed to add member. Check your connection and try again.');
+    }
   };
 
   const handleRemove = async (m) => {

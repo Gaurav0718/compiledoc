@@ -137,6 +137,24 @@ export async function participantHasAccount(pid) {
   return !!(await cache.users.get(id));
 }
 
+// Looks up any registered account by its exact ID — global across the whole
+// app, not scoped to groups the caller can already see. Lets an admin add
+// someone who already has an account (e.g. from a friend's group) as a
+// member using their real ID, instead of minting a duplicate profile.
+export async function findUserById(pid) {
+  const id = (pid || '').toLowerCase().trim();
+  if (!id) return null;
+  let user = null;
+  if (online()) {
+    const { data } = await sb(s =>
+      s.from('users').select('user_id,display_name').eq('user_id', id).maybeSingle()
+    );
+    user = data;
+  }
+  if (!user) user = await cache.users.get(id);
+  return user ? { participant_id: user.user_id, name: user.display_name || user.user_id } : null;
+}
+
 export async function getSecurityQuestion(username) {
   const user_id = username.toLowerCase().trim();
   let user = null;
