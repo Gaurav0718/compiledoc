@@ -68,7 +68,11 @@ export function ThemeToggle() {
 // participant_id, across every group the current user has access to) so an
 // admin can reuse an existing person's profile instead of minting a new one
 // every time. `onSelect(member)` fires with { name, participant_id }.
-export function MemberAutocomplete({ value, onChange, knownMembers, onSelect, placeholder, onEnter, autoFocus }) {
+// `onAddById`, if given, is used for the ID-lookup "Tap to add" action
+// instead of `onSelect` — its button promises an immediate add, so (unlike
+// picking a name-autocomplete suggestion, which only stages the field) it
+// needs a callback that actually performs the add right there.
+export function MemberAutocomplete({ value, onChange, knownMembers, onSelect, onAddById, placeholder, onEnter, autoFocus }) {
   const [open, setOpen] = React.useState(false);
   const [idMode, setIdMode] = React.useState(false);
   const q = value.trim().toLowerCase();
@@ -77,13 +81,10 @@ export function MemberAutocomplete({ value, onChange, knownMembers, onSelect, pl
     : [];
 
   if (idMode) {
-    // Exit back to the normal name view after picking — this both matches
-    // how the name-based autocomplete already behaves (it stages the field,
-    // it doesn't submit) and, crucially, makes the resolved name + the real
-    // "Add"/"Add Member" button visible again so there's something obvious
-    // to click next. Without this the ID view stayed on screen after a pick
-    // and the add button was still hidden behind it.
-    return <IdLookup onSelect={(m) => { onSelect(m); setIdMode(false); }} onCancel={() => setIdMode(false)} autoFocus={autoFocus} />;
+    // Exit back to the normal name view after picking — makes the resolved
+    // name + form visible again in case onAddById wasn't provided and this
+    // only staged the field (matching how the name-autocomplete behaves).
+    return <IdLookup onAdd={(m) => { (onAddById || onSelect)(m); setIdMode(false); }} onCancel={() => setIdMode(false)} autoFocus={autoFocus} />;
   }
 
   return (
@@ -119,7 +120,7 @@ export function MemberAutocomplete({ value, onChange, knownMembers, onSelect, pl
 // Looks up an existing account by its exact ID (e.g. a friend's ID from
 // another group) and lets the caller add them as this real identity instead
 // of creating a new duplicate profile.
-function IdLookup({ onSelect, onCancel, autoFocus }) {
+function IdLookup({ onAdd, onCancel, autoFocus }) {
   const [id, setId] = React.useState('');
   const [status, setStatus] = React.useState('idle'); // idle | checking | found | notfound
   const [found, setFound] = React.useState(null);
@@ -134,7 +135,7 @@ function IdLookup({ onSelect, onCancel, autoFocus }) {
   };
 
   const confirm = (user) => {
-    onSelect(user);
+    onAdd(user);
     setId(''); setFound(null); setStatus('idle'); // ready for another ID right away
   };
 

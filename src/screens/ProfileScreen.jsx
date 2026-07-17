@@ -31,7 +31,7 @@ function PinPad({ value, onChange, onComplete, loading }) {
             width:16, height:16, borderRadius:'50%',
             border:`2px solid ${value.length > i ? 'var(--accent)' : 'var(--border2)'}`,
             background: value.length > i ? 'var(--accent)' : 'transparent',
-            transition: 'all 0.18s cubic-bezier(0.34,1.56,0.64,1)',
+            transition: 'transform 0.18s cubic-bezier(0.34,1.56,0.64,1)',
             transform: value.length > i ? 'scale(1.25)' : 'scale(1)',
           }}/>
         ))}
@@ -40,7 +40,7 @@ function PinPad({ value, onChange, onComplete, loading }) {
         {['1','2','3','4','5','6','7','8','9','','0','del'].map((k,i) => (
           <button key={i}
             className={`pin-key${k===''?' empty':k==='del'?' del':''}`}
-            style={{ width:68, height:68, fontSize: k==='del'?'inherit':22, borderRadius:'50%' }}
+            style={{ width:68, height:68, fontSize: k==='del'?'inherit':22 }}
             onClick={() => k !== '' && handleKey(k)}
             disabled={loading || k === ''}
           >

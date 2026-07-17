@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getGroupData } from '../db/database';
-import { getFamilyTally, getCategoryTotals } from '../logic/calculations';
+import { getFamilyTally, getCategoryTotals, calculateBalances, calculateSplitwiseBalances, calculateSettlements } from '../logic/calculations';
 import { fmt, fmtDate, PaymentBadge, ThemeToggle } from '../components/ui';
 import { ArrowLeft, Lock, Copy, Check, Share2 } from 'lucide-react';
 
@@ -53,9 +53,19 @@ export default function PublicDashboard({ navigate, groupId }) {
     </div>
   );
 
-  const { group, collections, expenses } = data;
+  const { group, collections, expenses, members } = data;
   const isFamily = group?.type === 'family';
+  const isSplitwise = group?.type === 'splitwise';
   const collectPct = tally.totalExpenses > 0 ? Math.min(100, (tally.totalCollected / tally.totalExpenses) * 100) : 100;
+  const perPerson = members?.length > 0 ? tally.totalExpenses / members.length : 0;
+
+  // "Who owes whom" — a per-person debt concept, so it doesn't apply to
+  // Family groups (pooled contributions vs spending, not individual debts).
+  const settleTxns = isFamily ? [] : calculateSettlements(
+    isSplitwise
+      ? calculateSplitwiseBalances(members, expenses, data.splitsMap, data.settlements)
+      : calculateBalances(members, expenses, data.participantsMap, collections, group?.mode)
+  );
 
   return (
     <div className="screen">
@@ -93,20 +103,38 @@ export default function PublicDashboard({ navigate, groupId }) {
         {/* TALLY CARD */}
         <div className="tally-card">
           <div className="tally-header">
-            <div>
-              <div className="tally-title">{isFamily ? 'Balance' : 'Total Spent'}</div>
-              <div className={`tally-balance ${tally.isDeficit?'text-red':tally.isSurplus?'text-green':'text-accent'}`}>
-                {tally.isDeficit?'−':tally.isSurplus?'+':''}{fmt(tally.balance)}
+            {isFamily ? (
+              <div>
+                <div className="tally-title">Balance</div>
+                <div className={`tally-balance ${tally.isDeficit?'text-red':tally.isSurplus?'text-green':'text-accent'}`}>
+                  {tally.isDeficit?'−':tally.isSurplus?'+':''}{fmt(tally.balance)}
+                </div>
+                <div style={{ fontSize:12, color:'var(--text3)', marginTop:4 }}>
+                  {tally.isDeficit ? '⚠️ Expenses exceed collections' : tally.isSurplus ? '✓ Surplus remaining' : '✓ Balanced'}
+                </div>
               </div>
-              <div style={{ fontSize:12, color:'var(--text3)', marginTop:4 }}>
-                {tally.isDeficit ? '⚠️ Expenses exceed collections' : tally.isSurplus ? '✓ Surplus remaining' : '✓ Balanced'}
+            ) : (
+              <div>
+                <div className="tally-title">Total Spent</div>
+                <div className="tally-balance text-accent">{fmt(tally.totalExpenses)}</div>
               </div>
-            </div>
+            )}
             <div style={{ textAlign:'right' }}>
-              <div className="tally-title">Coverage</div>
-              <div style={{ fontWeight:700, fontSize:22, color: collectPct>=100?'var(--green)':'var(--red)', marginTop:5, letterSpacing:'-0.03em' }}>
-                {Math.round(collectPct)}%
-              </div>
+              {isFamily ? (
+                <>
+                  <div className="tally-title">Coverage</div>
+                  <div style={{ fontWeight:700, fontSize:22, color: collectPct>=100?'var(--green)':'var(--red)', marginTop:5, letterSpacing:'-0.03em' }}>
+                    {Math.round(collectPct)}%
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="tally-title">Per Person</div>
+                  <div style={{ fontWeight:700, fontSize:22, color:'var(--accent)', marginTop:5, letterSpacing:'-0.03em' }}>
+                    {fmt(perPerson)}
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className="tally-rows">
@@ -126,6 +154,30 @@ export default function PublicDashboard({ navigate, groupId }) {
             </div>
           </div>
         </div>
+
+        {/* WHO OWES WHOM */}
+        {!isFamily && (
+          <>
+            <div className="section-title">Who Owes Whom</div>
+            {settleTxns.length === 0 ? (
+              <div className="card" style={{ textAlign:'center', padding:'24px 16px' }}>
+                <div style={{ fontSize:36 }}>🎉</div>
+                <div style={{ fontWeight:700, fontSize:15, marginTop:8 }}>All settled up!</div>
+              </div>
+            ) : (
+              <div className="card" style={{ padding:'4px 18px' }}>
+                {settleTxns.map((s, i) => (
+                  <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 0', borderBottom: i<settleTxns.length-1 ? '1px solid var(--border)' : 'none' }}>
+                    <div style={{ flex:1, fontSize:13 }}>
+                      <strong>{s.from}</strong> <span style={{ color:'var(--text3)' }}>owes</span> <strong>{s.to}</strong>
+                    </div>
+                    <div style={{ fontWeight:700, fontSize:14, color:'var(--pink)' }}>{fmt(s.amount)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
         {/* STAT PILLS */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
