@@ -326,7 +326,7 @@ export function SettlementScreen({ navigate, groupId }) {
   useEffect(() => {
     getGroupDataStatic(groupId).then(d => {
         setGroupName(d.group?.name||'');
-        const bals = calculateBalances(d.members, d.expenses, d.participantsMap, d.collections, d.group?.mode);
+        const bals = calculateBalances(d.members, d.expenses, d.splitsMap, d.collections, d.group?.mode);
         setBalances(bals);
         setSettlements(calculateSettlements(bals));
       }).catch(() => {});

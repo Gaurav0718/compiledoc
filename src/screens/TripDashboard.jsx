@@ -24,7 +24,7 @@ export default function TripDashboard({ navigate, groupId }) {
     try {
       const d = await getGroupData(groupId);
       setData(d);
-      setBals(calculateBalances(d.members, d.expenses, d.participantsMap, d.collections, d.group?.mode));
+      setBals(calculateBalances(d.members, d.expenses, d.splitsMap, d.collections, d.group?.mode));
       const admin = await checkIsAdmin(groupId, user);
       setIsAdmin(admin);
     } catch {

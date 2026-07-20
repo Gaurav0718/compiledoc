@@ -708,7 +708,7 @@ export async function getGroupData(group_id) {
 
   const splitsMap = await getExpenseSplits(expenses.map(e => e.id));
 
-  return { group, members, expenses, collections, settlements, splitsMap, participantsMap: {} };
+  return { group, members, expenses, collections, settlements, splitsMap };
 }
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────

@@ -42,14 +42,20 @@ export default function TransactionForm({ type, groupType, members, initial, onS
   useEffect(() => {
     if (!category && !initial) setCategory(cats[0]);
     if (!isCollection && members.length) {
-      if (isSplitwise && initial?.splits?.length) {
+      // Restore who this expense was actually split among when editing —
+      // previously only Splitwise did this; Trip expenses always reset to
+      // "everyone selected" on edit even if the original save excluded
+      // someone, silently reverting their split back to including everyone.
+      if (!isFamily && initial?.splits?.length) {
         setParticipants(initial.splits.map(s => s.member_id));
-        const equal = splitEq(initial.amount / initial.splits.length, initial.splits[0].share)
-          && initial.splits.every(s => splitEq(s.share, initial.amount / initial.splits.length));
-        setSplitType(equal ? 'equal' : 'unequal');
-        const inputs = {};
-        initial.splits.forEach(s => { inputs[s.member_id] = String(s.share); });
-        setShareInputs(inputs);
+        if (isSplitwise) {
+          const equal = splitEq(initial.amount / initial.splits.length, initial.splits[0].share)
+            && initial.splits.every(s => splitEq(s.share, initial.amount / initial.splits.length));
+          setSplitType(equal ? 'equal' : 'unequal');
+          const inputs = {};
+          initial.splits.forEach(s => { inputs[s.member_id] = String(s.share); });
+          setShareInputs(inputs);
+        }
       } else {
         setParticipants(members.map(m => m.id));
       }
@@ -78,9 +84,14 @@ export default function TransactionForm({ type, groupType, members, initial, onS
 
     const amt = parseFloat(amount);
     let splits;
-    if (!isCollection && isSplitwise) {
+    if (!isCollection && !isFamily) {
       if (!participants.length) { setError('Select at least one person to split with'); return; }
-      if (splitType === 'equal') {
+      if (!isSplitwise || splitType === 'equal') {
+        // Trip mode only ever offers equal-among-selected — same math the
+        // Splitwise "Equal" option uses. Without recording this per expense,
+        // balances always fell back to splitting among *every* member
+        // regardless of who was actually picked here, corrupting who-owes/
+        // who-gets-back amounts whenever an expense excluded someone.
         const per = amt / participants.length;
         splits = participants.map(id => ({ member_id: id, share: per }));
       } else if (splitType === 'unequal') {
@@ -101,7 +112,6 @@ export default function TransactionForm({ type, groupType, members, initial, onS
       payment_mode: payMode,
       date,
       proof_image:  proofImage,
-      participant_ids: !isCollection && !isFamily ? participants : undefined,
       splits,
     });
   };

@@ -1,4 +1,8 @@
-export function calculateBalances(members, expenses, participantsMap, collections, mode) {
+// `splitsMap` holds the exact per-member shares recorded against each
+// expense (from the "Split Among" picker in TransactionForm) — falls back
+// to an equal split across every member only when an expense genuinely has
+// none recorded (e.g. expenses saved before this was tracked).
+export function calculateBalances(members, expenses, splitsMap, collections, mode) {
   const map = {};
   members.forEach(m => { map[m.id] = { ...m, paid: 0, share: 0, collected: 0, balance: 0 }; });
   if (mode === 'audit') {
@@ -6,11 +10,15 @@ export function calculateBalances(members, expenses, participantsMap, collection
   }
   expenses.forEach(e => { if (e.paid_by && map[e.paid_by]) map[e.paid_by].paid += e.amount; });
   expenses.forEach(e => {
-    const parts = (participantsMap && participantsMap[e.id]?.length)
-      ? participantsMap[e.id] : Object.keys(map);
-    if (!parts.length) return;
-    const share = e.amount / parts.length;
-    parts.forEach(mid => { if (map[mid]) map[mid].share += share; });
+    const splits = splitsMap && splitsMap[e.id];
+    if (splits && splits.length) {
+      splits.forEach(({ member_id, share }) => { if (map[member_id]) map[member_id].share += share; });
+    } else {
+      const ids = Object.keys(map);
+      if (!ids.length) return;
+      const share = e.amount / ids.length;
+      ids.forEach(mid => { map[mid].share += share; });
+    }
   });
   Object.values(map).forEach(m => {
     m.balance = mode === 'audit' ? m.collected - m.share : m.paid - m.share;

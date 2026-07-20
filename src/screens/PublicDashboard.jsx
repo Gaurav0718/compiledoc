@@ -64,7 +64,7 @@ export default function PublicDashboard({ navigate, groupId }) {
   const settleTxns = isFamily ? [] : calculateSettlements(
     isSplitwise
       ? calculateSplitwiseBalances(members, expenses, data.splitsMap, data.settlements)
-      : calculateBalances(members, expenses, data.participantsMap, collections, group?.mode)
+      : calculateBalances(members, expenses, data.splitsMap, collections, group?.mode)
   );
 
   return (
