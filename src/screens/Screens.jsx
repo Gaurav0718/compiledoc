@@ -144,7 +144,7 @@ export function CollectionListScreen({ navigate, groupId }) {
           <div className="modal">
             <div className="modal-handle"/>
             <div className="modal-title">{sheet?.item ? 'Edit Collection' : '+ Add Collection'}</div>
-            <TransactionForm type="collection" groupType={group?.type} members={members}
+            <TransactionForm type="collection" groupType={group?.type} members={members.filter(m => m.active !== false)}
               initial={sheet?.item} onSave={handleSave} onCancel={() => setSheet(null)} />
           </div>
         </div>
@@ -254,7 +254,7 @@ export function ExpenseListScreen({ navigate, groupId }) {
           <div className="modal">
             <div className="modal-handle"/>
             <div className="modal-title">{sheet?.item ? 'Edit Expense' : '+ Add Expense'}</div>
-            <TransactionForm type="expense" groupType={group?.type} members={members}
+            <TransactionForm type="expense" groupType={group?.type} members={members.filter(m => m.active !== false)}
               initial={sheet?.item} onSave={handleSave} onCancel={() => setSheet(null)} />
           </div>
         </div>
@@ -363,7 +363,9 @@ export function SettlementScreen({ navigate, groupId }) {
           {balances.map(m=>(
             <div key={m.id} style={{ display:'flex',alignItems:'center',gap:12,padding:'11px 0',borderBottom:'1px solid var(--border)' }}>
               <div className="avatar avatar-sm">{m.name[0].toUpperCase()}</div>
-              <div style={{ flex:1,fontWeight:600,fontSize:13,color:'var(--text)' }}>{m.name}</div>
+              <div style={{ flex:1,fontWeight:600,fontSize:13,color:'var(--text)' }}>
+                {m.name}{m.active === false && <span style={{ fontSize:10,color:'var(--text3)',fontWeight:400 }}> (removed)</span>}
+              </div>
               <div style={{ textAlign:'right' }}>
                 <div style={{ fontWeight:700,fontSize:14,letterSpacing:'-0.02em',color:m.balance>.5?'var(--green)':m.balance<-.5?'var(--red)':'var(--text3)' }}>
                   {m.balance>.5?'+':''}{fmt(m.balance)}

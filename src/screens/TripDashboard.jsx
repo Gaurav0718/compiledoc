@@ -71,13 +71,14 @@ export default function TripDashboard({ navigate, groupId }) {
   </div>;
 
   const { group, expenses, members } = data;
+  const activeMembers = members.filter(m => m.active !== false);
   const totalSpent = expenses.reduce((s,e)=>s+e.amount,0);
-  const perPerson  = members.length>0 ? totalSpent/members.length : 0;
+  const perPerson  = activeMembers.length>0 ? totalSpent/activeMembers.length : 0;
   const tally = { totalCollected: totalSpent, totalExpenses: totalSpent, balance: 0, isDeficit:false,isSurplus:false,isBalanced:true };
 
   return (
     <div className="screen">
-      <Header title={group?.name} subtitle={`${members.length} members · ${expenses.length} expenses`}
+      <Header title={group?.name} subtitle={`${activeMembers.length} members · ${expenses.length} expenses`}
         onBack={() => navigate('home')}
         right={
           isAdmin && (
@@ -104,6 +105,7 @@ export default function TripDashboard({ navigate, groupId }) {
               <div key={m.id} className="tally-row">
                 <span className="tally-label" style={{ display:'flex', alignItems:'center', gap:6 }}>
                   <div className="avatar avatar-xs">{m.name[0].toUpperCase()}</div> {m.name}
+                  {m.active === false && <span style={{ fontSize:10, color:'var(--text3)' }}>(removed)</span>}
                 </span>
                 <span className={`tally-value ${m.balance>.5?'text-green':m.balance<-.5?'text-red':''}`}>
                   {m.balance>.5?'+':''}{fmt(m.balance)}
@@ -179,7 +181,7 @@ export default function TripDashboard({ navigate, groupId }) {
           <div className="modal">
             <div className="modal-handle"/>
             <div className="modal-title">{sheet?.item ? 'Edit Expense' : '+ Add Expense'}</div>
-            <TransactionForm type="expense" groupType="trip" members={members}
+            <TransactionForm type="expense" groupType="trip" members={members.filter(m => m.active !== false)}
               initial={sheet?.item} onSave={handleSaveExpense} onCancel={() => setSheet(null)} />
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getGroupData, addMember, removeMember, updateMemberRole, updateGroupName, checkIsAdmin, deleteGroup, updateMemberName, getKnownMembers } from '../db/database';
-import { Header, dashRoute, MemberAutocomplete } from '../components/ui';
+import { Header, dashRoute, MemberAutocomplete, fmt } from '../components/ui';
+import { calculateBalances, calculateSplitwiseBalances } from '../logic/calculations';
 import { useAuth } from '../hooks/useAuth';
 import { sounds } from '../logic/sounds';
 import { Plus, Trash2, ShieldCheck, ShieldOff, Edit3, Copy, Check } from 'lucide-react';
@@ -55,12 +56,13 @@ export default function AdminPanelScreen({ navigate, groupId }) {
     const t = (overrideName ?? newName).trim();
     if (!t) return;
     const pid = overridePid !== undefined ? overridePid : newParticipantId;
-    // When adding by a known ID, only block on that exact ID already being a
-    // member — a name collision with someone else shouldn't block it. For a
-    // brand-new (no ID) entry, fall back to the name check as before.
+    // When adding by a known ID, only block on that exact ID already being an
+    // *active* member — a name collision with someone else shouldn't block
+    // it, and someone previously removed should be re-addable (addMember
+    // reactivates their old record rather than blocking or duplicating it).
     const dupe = pid
-      ? data.members.find(m => m.participant_id === pid)
-      : data.members.find(m => m.name.toLowerCase() === t.toLowerCase());
+      ? data.members.find(m => m.participant_id === pid && m.active !== false)
+      : data.members.find(m => m.name.toLowerCase() === t.toLowerCase() && m.active !== false);
     if (dupe) { setError(pid ? `${dupe.name} is already in this group` : 'Name already exists'); return; }
     try {
       const result = await addMember(groupId, user.uid, t, newRole, user.displayName, pid);
@@ -75,7 +77,20 @@ export default function AdminPanelScreen({ navigate, groupId }) {
   };
 
   const handleRemove = async (m) => {
-    if (!confirm(`Remove ${m.name}?`)) return;
+    // Removing a member currently used to silently drop whatever balance
+    // they still owed (or were owed) — it just fell out of the ledger with
+    // no way to see or collect it afterward. Surface the exact amount so
+    // that's a conscious choice, not a silent loss.
+    let warning = '';
+    if (data?.group?.type !== 'family') {
+      const bals = data.group?.type === 'splitwise'
+        ? calculateSplitwiseBalances(data.members, data.expenses, data.splitsMap, data.settlements)
+        : calculateBalances(data.members, data.expenses, data.splitsMap, data.collections, data.group?.mode);
+      const bal = bals.find(b => b.id === m.id)?.balance || 0;
+      if (bal > 0.5) warning = `\n\n⚠️ ${m.name} is still owed ${fmt(bal)}. Removing them makes this unrecoverable through the app — settle up first if possible.`;
+      else if (bal < -0.5) warning = `\n\n⚠️ ${m.name} still owes ${fmt(Math.abs(bal))}. Removing them makes this uncollectible through the app — settle up first if possible.`;
+    }
+    if (!confirm(`Remove ${m.name}?${warning}`)) return;
     await removeMember(m.id, groupId, user.uid, user.displayName);
     sounds.delete(); load();
   };
@@ -111,8 +126,23 @@ export default function AdminPanelScreen({ navigate, groupId }) {
     <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text3)'}}>Loading…</div>
   </div>;
 
-  const admins  = data.members.filter(m => m.role === 'admin');
-  const viewers = data.members.filter(m => m.role !== 'admin');
+  const activeMembers = data.members.filter(m => m.active !== false);
+  const admins  = activeMembers.filter(m => m.role === 'admin');
+  const viewers = activeMembers.filter(m => m.role !== 'admin');
+
+  // Members removed from the group still keep whatever balance they owed
+  // (or were owed) baked into the math — surface it here so it's never just
+  // an unexplained gap in someone else's "gets back"/"owes" total.
+  const removedWithBalance = (() => {
+    const removed = data.members.filter(m => m.active === false);
+    if (!removed.length || data.group?.type === 'family') return [];
+    const bals = data.group?.type === 'splitwise'
+      ? calculateSplitwiseBalances(data.members, data.expenses, data.splitsMap, data.settlements)
+      : calculateBalances(data.members, data.expenses, data.splitsMap, data.collections, data.group?.mode);
+    return removed
+      .map(m => ({ ...m, balance: bals.find(b => b.id === m.id)?.balance || 0 }))
+      .filter(m => Math.abs(m.balance) > 0.5);
+  })();
 
   return (
     <div className="screen">
@@ -229,6 +259,26 @@ export default function AdminPanelScreen({ navigate, groupId }) {
           {viewers.length === 0 && <div style={{padding:'14px 0',fontSize:13,color:'var(--text3)'}}>All members are admins</div>}
         </div>
 
+        {/* REMOVED MEMBERS WITH UNSETTLED BALANCE */}
+        {removedWithBalance.length > 0 && (
+          <>
+            <div className="section-title" style={{color:'var(--orange)'}}>Removed, Still Unsettled ({removedWithBalance.length})</div>
+            <div className="card" style={{padding:'4px 18px',borderColor:'var(--orange)'}}>
+              {removedWithBalance.map(m => (
+                <div key={m.id} className="admin-row">
+                  <div className="avatar avatar-sm" style={{opacity:0.6}}>{m.name[0].toUpperCase()}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:600,fontSize:14,color:'var(--text)'}}>{m.name} <span style={{fontWeight:400,color:'var(--text3)',fontSize:12}}>(removed)</span></div>
+                  </div>
+                  <div style={{fontSize:13,fontWeight:700,color:m.balance>0?'var(--green)':'var(--red)'}}>
+                    {m.balance>0 ? `is owed ${fmt(m.balance)}` : `owes ${fmt(Math.abs(m.balance))}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         {/* ADD MEMBER */}
         {isAdmin && (
           <>
@@ -251,7 +301,7 @@ export default function AdminPanelScreen({ navigate, groupId }) {
                 ))}
               </div>
               {error && <div style={{fontSize:12,color:'var(--red)',marginBottom:8}}>{error}</div>}
-              <button className="btn btn-primary" onClick={handleAddMember} disabled={!newName.trim()}>
+              <button className="btn btn-primary" onClick={() => handleAddMember()} disabled={!newName.trim()}>
                 <Plus size={16}/> Add {newRole==='admin'?'Admin':'Member'}
               </button>
               <div style={{fontSize:12,color:'var(--text3)',marginTop:10,lineHeight:1.6}}>

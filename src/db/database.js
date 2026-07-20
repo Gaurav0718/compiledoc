@@ -217,6 +217,7 @@ export async function createGroup({ uid, name, type, mode, creatorName }) {
     name:           creatorName || uid,
     role:           'admin',
     participant_id: uid,
+    active:         true,
     created_at:     new Date().toISOString()
   };
   if (online()) await sb(s => s.from('members').insert(memberRec)).catch(() => {});
@@ -282,8 +283,23 @@ export async function updateGroupName(group_id, name, by) {
 // brand new one for a name that already exists elsewhere.
 export async function addMember(group_id, uid, name, role = 'member', by = '', participant_id = null) {
   const pid = participant_id || generateParticipantId(name);
+  // Re-adding someone who was previously removed from this exact group
+  // reactivates their old record instead of minting a duplicate — keeps
+  // their name attached to their expense/settlement history intact.
+  const existing = await getMembers(group_id);
+  const prior = existing.find(m => m.participant_id === pid && m.active === false);
+  if (prior) {
+    if (online()) {
+      await sb(s => s.from('members').update({ active: true, role, name }).eq('member_id', prior.id));
+    } else {
+      await enqueue('members', 'update', { member_id: prior.id, active: true, role, name });
+    }
+    await cache.members.where('member_id').equals(prior.id).modify({ active: true, role, name }).catch(() => {});
+    _log(group_id, uid, 'add', 'member', by || name, `Re-added "${name}" (${pid}) as ${role}`);
+    return { id: prior.id, participant_id: pid };
+  }
   const member_id = newId();
-  const rec = { member_id, group_id, name, role, participant_id: pid, created_at: new Date().toISOString() };
+  const rec = { member_id, group_id, name, role, participant_id: pid, active: true, created_at: new Date().toISOString() };
   if (online()) {
     const { error } = await sb(s => s.from('members').insert(rec));
     if (error) throw new Error(error.message);
@@ -325,13 +341,19 @@ export async function getKnownMembers(user) {
 }
 
 export async function removeMember(member_id, group_id, uid, by) {
+  // Soft-delete: a hard delete would erase the member's name/id from the DB
+  // entirely, so any share of an expense they still owed (or were owed)
+  // becomes permanently unattributable — it just vanishes from the ledger's
+  // total with no way to trace or display it. Deactivating instead keeps
+  // their history intact for balance math and audit purposes; every place
+  // that lets you pick/manage members filters to active ones only.
   if (online()) {
-    await sb(s => s.from('members').delete().eq('member_id', member_id));
+    await sb(s => s.from('members').update({ active: false }).eq('member_id', member_id));
   } else {
-    await enqueue('members', 'delete', { member_id });
+    await enqueue('members', 'update', { member_id, active: false });
   }
   _log(group_id, uid, 'delete', 'member', by, `Removed member`);
-  await cache.members.where('member_id').equals(member_id).delete().catch(() => {});
+  await cache.members.where('member_id').equals(member_id).modify({ active: false }).catch(() => {});
 }
 
 export async function updateMemberRole(member_id, group_id, uid, role, by) {
@@ -698,6 +720,7 @@ export async function getGroupData(group_id) {
       name:           group.owner_name || group.owner_id,
       role:           'admin',
       participant_id: group.owner_id,
+      active:         true,
       created_at:     new Date().toISOString(),
     };
     if (online()) await sb(s => s.from('members').insert(memberRec)).catch(() => {});

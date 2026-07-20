@@ -284,7 +284,7 @@ export default function FamilyDashboard({ navigate, groupId }) {
             <TransactionForm
               type={sheet==='collection'||sheet?.type==='collection' ? 'collection' : 'expense'}
               groupType="family"
-              members={members}
+              members={members.filter(m => m.active !== false)}
               initial={sheet?.item}
               onSave={sheet==='collection'||sheet?.type==='collection' ? handleSaveCollection : handleSaveExpense}
               onCancel={() => setSheet(null)}
